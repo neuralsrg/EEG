@@ -1,4 +1,4 @@
-# Code for EEG project 
+# Restoring spectrums using pseudo-invetse matrix transformation 
 
 ## 50msSpectrum.ipynb
 Creating correlation matrix
