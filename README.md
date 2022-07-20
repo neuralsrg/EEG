@@ -1,5 +1,11 @@
 # EEG decoding
 
+## For anyone willing to clone / pull repository without LFS files:
+```
+GIT_LFS_SKIP_SMUDGE=1 git clone SERVER-REPOSITORY
+git lfs pull --include "*.h5" # to pull LFS files when needed
+```
+
 ### Goal:
 Given `correlation matrix` / `edf file`, restore the sound spectrum.
 
