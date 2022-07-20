@@ -24,3 +24,4 @@ git merge [branch] # for merging branches
 ### Scripts:
 * `get_file.sh` creates cURL request to download file from github (large file) storage
 * `lfs_request.sh` creates cURL request using pointer-file for files stored in git-lfs (seems outdated)
+test string from test branch 
