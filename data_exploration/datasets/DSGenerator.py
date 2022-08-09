@@ -8,7 +8,8 @@ from typing import Optional, List, Set, Tuple, Sequence
 class WindowGenerator():
 
   def __init__(self,
-               paths : Sequence[str]) -> None:
+               paths : Sequence[str],
+               normalize : Optional[Sequence[float]] = None) -> None:
       assert type(paths) == list
       self._mne_data = [mne.io.read_raw_edf(path) for path in paths]
       self._electrodes = [mne_data.get_data() for mne_data in self._mne_data]
@@ -18,8 +19,10 @@ class WindowGenerator():
                                                            1006.04, ch_types='eeg'))
       self._label_channel = self._electrodes[-1]
       self._electrodes = self._electrodes[:-1]
-
-      self._normalize = np.max(np.abs(self._electrodes), axis=-1)[..., np.newaxis]
+      
+      self._normalize = np.max(np.abs(self._electrodes), axis=-1)[..., np.newaxis] \
+        if normalize is None else normalize
+      
       self._electrodes = self._electrodes / self._normalize
       msg = '\n\nAll the data was normalized. Refer to normalization coefficient as WindowGenerator().normalize'
       print(f"\x1b[32m{msg}\x1b[0m")
@@ -143,7 +146,7 @@ class WindowGenerator():
     # so straight because of insufficient RAM problem...
     num_electrodes = self._raw_data.shape[0]
     for i in range(num_electrodes):
-
+      
       sig_listen = np.append(sig_listen, self._raw_data[i][indices_listen].
           reshape(n_events, self._length)[:, np.newaxis, :], axis=1)
       
@@ -213,13 +216,68 @@ class WindowGenerator():
     self._noise = np.moveaxis(self._noise, -1, -2)
 
   
+  def _split_datasets(self,
+                      listen_repeat_noise : Sequence[bool],
+                      train_val_test : Sequence[float],
+                      shuffle_before_splitting : bool) -> List[tf.data.Dataset]:
+    """ Splits dataset according to shuffling parameter """
+    self._n_sets = np.count_nonzero(train_val_test)
+    
+    datasets = np.array([self._listen_ds, self._repeat_ds, self._noise_ds])
+    datasets = datasets[listen_repeat_noise]
+
+    if shuffle_before_splitting:
+      
+      sizes = [int(self._num_examples * train_val_test[i]) for i in range(self._n_sets - 1)]
+      sizes.append(self._num_examples - int(np.sum(sizes)))
+      self._sizes = sizes
+
+      dataset = datasets[0]
+      if len(datasets) > 1:
+        for ds in datasets[1:]:
+          dataset = dataset.concatenate(ds)
+    
+      dataset = dataset.shuffle(self._num_examples)
+      datasets = []
+
+      for size in sizes:
+        datasets.append(dataset.take(size))
+        dataset = dataset.skip(size)
+      return datasets
+
+    else:
+      k = np.count_nonzero(listen_repeat_noise)
+      sizes = [int(self._num_examples // k * train_val_test[i]) \
+               for i in range(self._n_sets - 1)]
+      sizes.append(self._num_examples // k - int(np.sum(sizes)))
+      self._sizes = [k * size for size in sizes]
+
+      splitted = []
+      for size in sizes:
+        splitted.append([ds.take(size) for ds in datasets])
+        datasets = [ds.skip(size) for ds in datasets]
+      self._splitted = splitted
+      
+      datasets = []
+      for i in range(len(splitted)):
+        first_dataset = splitted[i][0]
+        if len(splitted[i]) > 1:
+          for ds in splitted[i][1:]:
+            first_dataset = first_dataset.concatenate(ds)
+        datasets.append(first_dataset.shuffle(self._sizes[i]))
+        #datasets.append(first_dataset)
+
+    return datasets
+
+  
   def create_dataset(self,
                      event_length : Optional[int] = 300,
-                     indices_noise : Optional[np.array] = None,
+                     indices_noise : Optional[np.ndarray] = None,
                      plot_indices : Optional[bool] = True,
                      skip_in_repeat : Optional[int] = 100,
                      listen_repeat_noise : Optional[Tuple[bool, bool, bool]] = [True, False, True],
                      train_val_test : Optional[Tuple[float, float, float]] = [.8, .2, 0],
+                     shuffle_before_splitting : Optional[bool] = True,
                      batch_size : Optional[int] = 32,
                      split_windows : Optional[bool] = False,
                      channels : Optional[Sequence[int]] = [],
@@ -241,6 +299,8 @@ class WindowGenerator():
     listen_repeat_noise (optional) -- List[bool, bool, bool]. Specifies whitch data to include in the dataset
       The first bool refers to listen, the second to repeat etc.
     train_val_test (optional) -- List[float, float, float]. Specifies train/val/test ratios respectively
+    shuffle_before_splitting (optional) -- bool. Whether to shuffler data before splitting into
+      train / val / test or after
     batch_size (optional) -- batch size
     split_windows (optional) -- bool. Whether to breake neural data sequences down into smaller ones
     channels (optional) -- array of electrode channel indices to use in dataset (e.g. np.arange(19, 68))
@@ -294,6 +354,8 @@ class WindowGenerator():
     self._noise_ds = tf.data.Dataset.from_tensor_slices(self._noise)
 
     num_examples = np.count_nonzero(listen_repeat_noise) * self._listen.shape[0]
+    self._num_examples = num_examples
+    print('Total number of elements in the dataset:', num_examples)
 
     assert np.count_nonzero(listen_repeat_noise) >= 2
     noise_listen_repeat = np.array(listen_repeat_noise)[[2, 0, 1]]
@@ -311,38 +373,21 @@ class WindowGenerator():
     self._repeat_ds = self._repeat_ds.map(repeat_lambda, num_parallel_calls=tf.data.AUTOTUNE)
     self._noise_ds = self._noise_ds.map(noise_lambda, num_parallel_calls=tf.data.AUTOTUNE)
 
-    datasets = np.array([self._listen_ds, self._repeat_ds, self._noise_ds])
-    datasets = datasets[listen_repeat_noise]
+    datasets = self._split_datasets(listen_repeat_noise, train_val_test, shuffle_before_splitting)
 
-    dataset = datasets[0]
-    if len(datasets) > 1:
-      for ds in datasets[1:]:
-        dataset = dataset.concatenate(ds)
-
-    print('Total number of elements in the dataset:', num_examples)
-
-    dataset = dataset.shuffle(num_examples)
-
-    n_sets = np.count_nonzero(train_val_test)
-    sizes = [int(num_examples * train_val_test[i]) for i in range(n_sets - 1)]
-    sizes.append(num_examples - int(np.sum(sizes)))
-
-    datasets = []
-    for size in sizes:
-      datasets.append(dataset.take(size))
-      dataset = dataset.skip(size)
-
-    sets = np.array(['train', 'val', 'test'])[np.arange(n_sets)]
+    sets = np.array(['train', 'val', 'test'])[np.arange(self._n_sets)]
     if verbose:
-      msg = [f'{sets[i]} dataset contains {size} elements' for i, size in enumerate(sizes)]
+      msg = [f'{sets[i]} dataset contains {size} elements' for i, size in enumerate(self._sizes)]
       print('\n'.join(msg))
 
     print('\nRefer to datasets as:')
     msg = [f'\t WindowGenerator().{s}' for s in sets]
     print('\n'.join(msg))
 
-    print('Note: If Noise == True then Noise is encoded with label 0')
-    print('Second priority is always Listen and then Repeat')
+    sets = np.array(['Noise', 'Listen', 'Repeat'])[noise_listen_repeat]
+    msg = [f'{s} was encoded with label {labels[i]}' for i, s in enumerate(sets)]
+    msg = '\n'.join(msg)
+    print(f"\n\x1b[32m{msg}\x1b[0m")
 
     self._train = datasets[0].batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
     if len(datasets) > 1:
