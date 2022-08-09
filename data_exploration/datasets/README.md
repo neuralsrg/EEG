@@ -53,6 +53,8 @@ generator.create_dataset(
 	 skip_in_repeat : Optional[int] = 100, # shift each repeat interval to the right by skip_in_repeat features
 	 listen_repeat_noise : Optional[Tuple[bool, bool, bool]] = [True, False, True], # which data to include in dataset
 	 train_val_test : Optional[Tuple[float, float, float]] = [.8, .2, 0], # train / val / test ratios
+	 shuffle_before_splitting (optional) -- bool. Whether to shuffler data before splitting into
+    	train / val / test or after
 	 batch_size : Optional[int] = 32, # batch size
 	 split_windows : Optional[bool] = False, # whether to split time intervals into smaller windows
 	 channels : Optional[Sequence[int]] = [], # which channels to use (index array)

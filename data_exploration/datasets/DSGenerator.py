@@ -145,13 +145,13 @@ class WindowGenerator():
     for i in range(num_electrodes):
 
       sig_listen = np.append(sig_listen, self._raw_data[i][indices_listen].
-          reshape(self._length, n_events).T.reshape(n_events, 1, self._length), axis=1)
+          reshape(n_events, self._length)[:, np.newaxis, :], axis=1)
       
       sig_repeat = np.append(sig_repeat, self._raw_data[i][indices_repeat].
-          reshape(self._length, n_events).T.reshape(n_events, 1, self._length), axis=1)
+          reshape(n_events, self._length)[:, np.newaxis, :], axis=1)
       
       sig_noise = np.append(sig_noise, self._raw_data[i][indices_noise].
-          reshape(self._length, n_events).T.reshape(n_events, 1, self._length), axis=1)
+          reshape(n_events, self._length)[:, np.newaxis, :], axis=1)
 
     self._listen = sig_listen
     self._repeat = sig_repeat
