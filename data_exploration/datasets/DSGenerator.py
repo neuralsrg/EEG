@@ -116,23 +116,18 @@ class WindowGenerator():
     indices_listen = self._non_zero_label_inds[::2]
     indices_repeat = self._non_zero_label_inds[1::2] + skip_in_repeat
     
+    if self._indices_noise is None:
+      # first points in each noise interval
+      self._indices_noise = indices_listen - (self._length + 100) 
+      
     arrays = [np.arange(i, i + self._length, dtype=int) for i in indices_listen]
     indices_listen = np.sort(np.concatenate(arrays, axis=0))
 
     arrays = [np.arange(i, i + self._length, dtype=int) for i in indices_repeat]
     indices_repeat = np.sort(np.concatenate(arrays, axis=0))
-    
-    if self._indices_noise is None:
-      indices_noise = np.concatenate((np.arange(1000, 1000 + self._length),
-                                      indices_repeat[:-self._length] + 6000),
-                                      dtype=int)
-      
-      # first points in each noise interval
-      self._indices_noise = indices_noise[::self._length]
-    else:
 
-      arrays = [np.arange(i, i + self._length, dtype=int) for i in self._indices_noise]
-      indices_noise = np.sort(np.concatenate(arrays, axis=0))
+    arrays = [np.arange(i, i + self._length, dtype=int) for i in self._indices_noise]
+    indices_noise = np.sort(np.concatenate(arrays, axis=0))
       
     # must be 0 otherwise noise intervals overlap with label intervals!
     self._noise_max_label = np.max(self._label_channel[indices_noise])
@@ -313,7 +308,6 @@ class WindowGenerator():
       'bfc' is usually used with RNNs. Use 'bcf' in most other cases.
     plots (optional) -- int. Number of subplots in label - noise plot
     verbose : Optional[bool] = True. Whether to print logging messages
-
     Returns:
     None.
     Generated datasets are stored in WindowGenerator.train, WindowGenerator.val and WindowGenerator.test

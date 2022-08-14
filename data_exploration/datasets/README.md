@@ -25,26 +25,7 @@ Each electrode channel is `normalized`. You can get `normalization vector`:
 generator.normalize
 ```
 
-3. If you intend to use `noise` along with `listen` and `repeat` data, you **should** specify noise indices (one index per noise interval -- first index in each interval). I have already computed correct indices (for 300ms time lapse), load them from `bash_and_bond_noise.json` and `bash_noise.json`:
-```
-import os
-import numpy as np
-import codecs, json 
-
-path = "/content/data"
-
-obj_text = codecs.open(os.path.join(path, 'bash_and_bond_noise.json'), 'r', encoding='utf-8').read()
-loaded = json.loads(obj_text)
-bash_bond = np.array(loaded)
-
-obj_text = codecs.open(os.path.join(path, 'bash_noise.json'), 'r', encoding='utf-8').read()
-loaded = json.loads(obj_text)
-bash = np.array(loaded)
-```
-
-Pass these indices to `generator.create_dataset(indices_noise=bash)` in case of single EDF dataset (based on `bash_phoneme.EDF`) and `generator.create_dataset(indices_noise=bash_bond)` in case of dataset based on both `bash_phoneme.EDF` and `bond_phoneme.EDF` 
-
-4. Now you can create dataset with `generator.create_dataset()`
+3. Now you can create dataset with `generator.create_dataset()`
 ```
 generator.create_dataset(
 	 event_length : Optional[int] = 300, # time lapse after each label to include in dataset (in ms since frequency ~ 1000Hz)
