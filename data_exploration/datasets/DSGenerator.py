@@ -5,6 +5,7 @@ import pandas as pd
 import mne
 from typing import Optional, List, Set, Tuple, Sequence
 
+
 class WindowGenerator():
 
   def __init__(self,
@@ -24,7 +25,7 @@ class WindowGenerator():
         if normalize is None else normalize
       
       self._electrodes = self._electrodes / self._normalize
-      msg = '\n\nAll the data was normalized. Refer to normalization coefficient as WindowGenerator().normalize'
+      msg = '\n\nAll the data was normalized. Refer to normalization coefficient as WindowGenerator_object().normalize'
       print(f"\x1b[32m{msg}\x1b[0m")
 
       self._df = pd.DataFrame(self._electrodes.T, columns=self._mne_data[0].ch_names[:-1])
@@ -260,7 +261,6 @@ class WindowGenerator():
           for ds in splitted[i][1:]:
             first_dataset = first_dataset.concatenate(ds)
         datasets.append(first_dataset.shuffle(self._sizes[i]))
-        #datasets.append(first_dataset)
 
     return datasets
 
@@ -310,7 +310,8 @@ class WindowGenerator():
     verbose : Optional[bool] = True. Whether to print logging messages
     Returns:
     None.
-    Generated datasets are stored in WindowGenerator.train, WindowGenerator.val and WindowGenerator.test
+    Generated datasets are stored in WindowGenerator_object.train,
+    WindowGenerator_object.val and WindowGenerator_object.test
     """
     assert np.sum(train_val_test) == 1
     assert axis in ['bcf', 'bfc']
@@ -358,6 +359,7 @@ class WindowGenerator():
     for b in noise_listen_repeat:
       apnd = next(it) if b else 2
       labels.append(apnd)
+
     assert set(labels) == set([0, 1, 2])
     noise_lambda = lambda x: (x, labels[0])
     listen_lambda = lambda x: (x, labels[1])
@@ -375,10 +377,11 @@ class WindowGenerator():
       print('\n'.join(msg))
 
     print('\nRefer to datasets as:')
-    msg = [f'\t WindowGenerator().{s}' for s in sets]
+    msg = [f'\t WindowGenerator_object.{s}' for s in sets]
     print('\n'.join(msg))
 
     sets = np.array(['Noise', 'Listen', 'Repeat'])[noise_listen_repeat]
+    labels = np.array(labels)[noise_listen_repeat]
     msg = [f'{s} was encoded with label {labels[i]}' for i, s in enumerate(sets)]
     msg = '\n'.join(msg)
     print(f"\n\x1b[32m{msg}\x1b[0m")
