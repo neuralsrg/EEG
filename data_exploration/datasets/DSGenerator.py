@@ -295,6 +295,9 @@ class WindowGenerator():
       self._listen /= scale
       self._repeat /= scale
       self._noise /= scale
+      self._cwt_norm = scale
+      msg = 'CWT coefficients were normalized. Refer to normalization coefficient as WindowGenerator_object.cwt_norm'
+      print(f"\x1b[32m{msg}\x1b[0m")
   
     if plot_cwt:
       print(f'/n{plot_index}-th sample in time-frequency domain')
@@ -492,6 +495,11 @@ class WindowGenerator():
       self._val = datasets[1].batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
     if len(datasets) > 2:
       self._test = datasets[2].batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
+
+
+  @property
+  def cwt_norm(self) -> float:
+    return self._cwt_norm
 
     
   @property
