@@ -300,7 +300,6 @@ class WindowGenerator():
       print(f"\x1b[32m{msg}\x1b[0m")
   
     if plot_cwt:
-      print(f'/n{plot_index}-th sample in time-frequency domain')
       fig = plt.figure(figsize=(24, 4))
       duration = self._listen.shape[-1]
   
