@@ -306,21 +306,21 @@ class WindowGenerator():
   
       ax = fig.add_subplot(131)
       plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                    generator._noise[plot_index], shading='flat', cmap='YlGn')
+                     self._noise[plot_index], shading='flat', cmap='YlGn')
       plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
       plt.colorbar()
       plt.title('Noise')
       
       ax = fig.add_subplot(132)
       plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                    generator._listen[plot_index], shading='flat', cmap='YlGn')
+                     self._listen[plot_index], shading='flat', cmap='YlGn')
       plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
       plt.colorbar()
       plt.title('Listen')
       
       ax = fig.add_subplot(133)
       plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                    generator._repeat[plot_index], shading='flat', cmap='YlGn')
+                     self._repeat[plot_index], shading='flat', cmap='YlGn')
       plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
       plt.colorbar()
       plt.title('Repeat')
