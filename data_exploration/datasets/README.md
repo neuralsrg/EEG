@@ -27,26 +27,52 @@ generator.normalize
 
 3. Now you can create dataset with `generator.create_dataset()`
 ```
-generator.create_dataset(
-	 event_length : Optional[int] = 300, # time lapse after each label to include in dataset (in ms since frequency ~ 1000Hz)
-	 indices_noise : Optional[np.array] = None, # loaded / created indices for noise data (first indices in each interval)
-	 plot_indices : Optional[bool] = True, # whether to plot indices to check if they overlap
-	 skip_in_repeat : Optional[int] = 100, # shift each repeat interval to the right by skip_in_repeat features
-	 listen_repeat_noise : Optional[Tuple[bool, bool, bool]] = [True, False, True], # which data to include in dataset
-	 train_val_test : Optional[Tuple[float, float, float]] = [.8, .2, 0], # train / val / test ratios
-	 shuffle_before_splitting (optional) -- bool. Whether to shuffler data before splitting into
-    	train / val / test or after
-	 batch_size : Optional[int] = 32, # batch size
-	 split_windows : Optional[bool] = False, # whether to split time intervals into smaller windows
-	 channels : Optional[Sequence[int]] = [], # which channels to use (index array)
-	 window_size : Optional[int] = 128, # if split_windows, window size
-	 shift : Optional[int] = None, # if split_windows, hop size between each window (if None, then shift = window_size)
-	 stride : Optional[int] = 1, # if split_windows, distance between single window elements (not recommended to change).
-	 	See [tensorflow documentation](https://www.tensorflow.org/api_docs/python/tf/data/Dataset#window) for details
-	 axis : Optional[str] = 'bcf', # Dataset dimensionality. Either 'bcf' (batch, channel, features) or 'bfc' (batch, features, channel) (for RNNs)
-	 plots : Optional[int] =  20, # number of subplots in indices plot 
-	 verbose : Optional[bool] = True # verbosity mode 
-)
+Sequence generating parameters:
+
+event_length (optional) -- int. Length of the event. 300ms = 300 samples
+indices_noise (optional) -- np.array of first points in each noise interval of shape same as
+  number of listen / repeat labels
+plot_indices (optional) -- bool. Whether to plot noise vs labeled indices plot
+skip_in_repeat (optional) -- samples to skip after repeat label. 100ms = 100 samples
+listen_repeat_noise (optional) -- List[bool, bool, bool]. Specifies whitch data to include in the dataset
+  The first bool refers to listen, the second to repeat etc.
+channels (optional) -- array of electrode channel indices to use in dataset (e.g. np.arange(19, 68))
+
+
+Wavelet transform parameters:
+
+apply_cwt (optional) -- bool, whether to apply continious wavelet transform
+wavelet_name (optional) -- str, wavelet name (see: https://pywavelets.readthedocs.io/en/latest/ref/cwt.html#continuous-wavelet-families)
+cwt_channel (optional) -- int, which channel to use to perform wavelet transform
+normalize_cwt (optional) -- bool, whether to normalize cwt matrices
+plot_cwt (optional) -- bool, whether to plot noise / listen / repeat cwt graphs
+plot_index (optional) -- int, if plot_cwt == True, which sample from dataset to use for plotting 
+
+
+Dataset generating parameters:
+
+train_val_test (optional) -- List[float, float, float]. Specifies train/val/test ratios respectively
+shuffle_before_splitting (optional) -- bool. Whether to shuffler data before splitting into
+  train / val / test or after
+batch_size (optional) -- batch size
+axis (optional) -- str. Either 'bcf' (batch, channels, features) or 'bfc' (batch, features, channels).
+  'bfc' is usually used with RNNs. Use 'bcf' in most other cases.
+
+
+Windowing parameters: (not recommended when using wavelet transform)
+
+split_windows (optional) -- bool. Whether to breake neural data sequences down into smaller ones
+window_size (optional) -- int. Used if split_windows == True. The length of the smaller windows
+shift (optional) -- int. Used if split_windows == True. Hop length used when creating smaller windows.
+  If None, then smaller windows do not overlap.
+stride (optional) -- int. Used if split_windows == True. Determines the stride between input elements within a window.
+  Not recommended to change!
+
+
+Verbosity parameters:
+
+plots (optional) -- int. Number of subplots in label - noise plot
+verbose : Optional[bool] = True. Whether to print logging messages
 ```
 
 ### For git-lfs (.csv files)
