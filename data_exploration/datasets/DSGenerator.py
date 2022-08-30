@@ -6,7 +6,6 @@ import pywt
 import mne
 from typing import Optional, List, Set, Tuple, Sequence
 
-
 class WindowGenerator():
 
   def __init__(self,
@@ -270,7 +269,7 @@ class WindowGenerator():
            channel : Optional[int] = 25,
            normalize : Optional[bool] = True,
            plot_cwt : Optional[bool] = True,
-           plot_index : Optional[int] = 179) -> None:
+           plot_indices : Optional[int] = 179) -> None:
   
     sr = self._mne_data[0].info['sfreq']
     starting_rate = float(name.split('-')[-1]) 
@@ -300,30 +299,31 @@ class WindowGenerator():
       print(f"\x1b[32m{msg}\x1b[0m")
   
     if plot_cwt:
-      fig = plt.figure(figsize=(24, 4))
-      duration = self._listen.shape[-1]
+      for plot_index in plot_indices:
+        fig = plt.figure(figsize=(24, 4))
+        duration = self._listen.shape[-1]
+    
+        ax = fig.add_subplot(131)
+        plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
+                      self._noise[plot_index], shading='flat', cmap='YlGn')
+        plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
+        plt.colorbar()
+        plt.title('Noise')
+        
+        ax = fig.add_subplot(132)
+        plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
+                      self._listen[plot_index], shading='flat', cmap='YlGn')
+        plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
+        plt.colorbar()
+        plt.title('Listen')
+        
+        ax = fig.add_subplot(133)
+        plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
+                      self._repeat[plot_index], shading='flat', cmap='YlGn')
+        plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
+        plt.colorbar()
+        plt.title('Repeat')
   
-      ax = fig.add_subplot(131)
-      plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                     self._noise[plot_index], shading='flat', cmap='YlGn')
-      plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
-      plt.colorbar()
-      plt.title('Noise')
-      
-      ax = fig.add_subplot(132)
-      plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                     self._listen[plot_index], shading='flat', cmap='YlGn')
-      plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
-      plt.colorbar()
-      plt.title('Listen')
-      
-      ax = fig.add_subplot(133)
-      plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                     self._repeat[plot_index], shading='flat', cmap='YlGn')
-      plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
-      plt.colorbar()
-      plt.title('Repeat')
-
   
   def create_dataset(self,
                      event_length : Optional[int] = 300,
@@ -336,7 +336,7 @@ class WindowGenerator():
                      apply_cwt : Optional[bool] = False,
                      cwt_normalize : Optional[bool] = True,
                      cwt_plot : Optional[bool] = True,
-                     plot_index : Optional[int] = 179,
+                     cwt_inds_plot : Optional[List[int]] = [42, 179],
                      train_val_test : Optional[Tuple[float, float, float]] = [.8, .2, 0],
                      shuffle_before_splitting : Optional[bool] = True,
                      batch_size : Optional[int] = 32,
@@ -352,9 +352,7 @@ class WindowGenerator():
     Creates datasets
     
     Args:
-
     Sequence generating parameters:
-
     event_length (optional) -- int. Length of the event. 300ms = 300 samples
     indices_noise (optional) -- np.array of first points in each noise interval of shape same as
       number of listen / repeat labels
@@ -363,42 +361,32 @@ class WindowGenerator():
     listen_repeat_noise (optional) -- List[bool, bool, bool]. Specifies whitch data to include in the dataset
       The first bool refers to listen, the second to repeat etc.
     channels (optional) -- array of electrode channel indices to use in dataset (e.g. np.arange(19, 68))
-
     Wavelet transform parameters:
-
     apply_cwt (optional) -- bool, whether to apply continious wavelet transform
     wavelet_name (optional) -- str, wavelet name (see: https://pywavelets.readthedocs.io/en/latest/ref/cwt.html#continuous-wavelet-families)
     cwt_channel (optional) -- int, which channel to use to perform wavelet transform
     normalize_cwt (optional) -- bool, whether to normalize cwt matrices
     plot_cwt (optional) -- bool, whether to plot noise / listen / repeat cwt graphs
-    plot_index (optional) -- int, if plot_cwt == True, which sample from dataset to use for plotting 
-
+    cwt_inds_plot (optional) -- array of int, if plot_cwt == True, which samples from dataset to use for plotting 
     Dataset generating parameters:
-
     train_val_test (optional) -- List[float, float, float]. Specifies train/val/test ratios respectively
     shuffle_before_splitting (optional) -- bool. Whether to shuffler data before splitting into
       train / val / test or after
     batch_size (optional) -- batch size
     axis (optional) -- str. Either 'bcf' (batch, channels, features) or 'bfc' (batch, features, channels).
       'bfc' is usually used with RNNs. Use 'bcf' in most other cases.
-
     Windowing parameters: (not recommended when using wavelet transform)
-
     split_windows (optional) -- bool. Whether to breake neural data sequences down into smaller ones
     window_size (optional) -- int. Used if split_windows == True. The length of the smaller windows
     shift (optional) -- int. Used if split_windows == True. Hop length used when creating smaller windows.
       If None, then smaller windows do not overlap.
     stride (optional) -- int. Used if split_windows == True. Determines the stride between input elements within a window.
       Not recommended to change!
-
     Verbosity parameters:
-
     plots (optional) -- int. Number of subplots in label - noise plot
     verbose : Optional[bool] = True. Whether to print logging messages
-
     Returns:
     None.
-
     Generated datasets are stored in WindowGenerator_object.train,
     WindowGenerator_object.val and WindowGenerator_object.test
     """
@@ -434,7 +422,7 @@ class WindowGenerator():
 
     # continious wavelet transform
     if apply_cwt:
-      self._cwt(wavelet_name, cwt_channel, cwt_normalize, cwt_plot, plot_index)
+      self._cwt(wavelet_name, cwt_channel, cwt_normalize, cwt_plot, cwt_inds_plot)
 
     # changes data axis mode
     if axis == 'bfc':

@@ -46,7 +46,7 @@ wavelet_name (optional) -- str, wavelet name (see: https://pywavelets.readthedoc
 cwt_channel (optional) -- int, which channel to use to perform wavelet transform
 normalize_cwt (optional) -- bool, whether to normalize cwt matrices
 plot_cwt (optional) -- bool, whether to plot noise / listen / repeat cwt graphs
-plot_index (optional) -- int, if plot_cwt == True, which sample from dataset to use for plotting 
+cwt_inds_plot (optional) -- sequence of int, if plot_cwt == True, which samples from dataset to use for plotting 
 
 
 Dataset generating parameters:
