@@ -42,7 +42,7 @@ channels (optional) -- array of electrode channel indices to use in dataset (e.g
 Wavelet transform parameters:
 
 apply_cwt (optional) -- bool, whether to apply continious wavelet transform
-wavelet_name (optional) -- str, wavelet name (see: https://pywavelets.readthedocs.io/en/latest/ref/cwt.html#continuous-wavelet-families)
+norm_skew (optional) -- int, skewness to apply on gaussian when creating wavelet
 cwt_channel (optional) -- int, which channel to use to perform wavelet transform
 normalize_cwt (optional) -- bool, whether to normalize cwt matrices
 plot_cwt (optional) -- bool, whether to plot noise / listen / repeat cwt graphs

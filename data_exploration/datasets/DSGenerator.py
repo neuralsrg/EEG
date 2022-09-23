@@ -1,10 +1,12 @@
-import numpy as np 
-import tensorflow as tf 
+import numpy as np
+import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
-import pywt
+from scipy import signal
+from scipy.stats import norm
 import mne
 from typing import Optional, List, Set, Tuple, Sequence
+
 
 class WindowGenerator():
 
@@ -20,10 +22,10 @@ class WindowGenerator():
                                                           1006.04, ch_types='eeg'))
     self._label_channel = self._electrodes[-1]
     self._electrodes = self._electrodes[:-1]
-    
+
     self._normalize = np.max(np.abs(self._electrodes), axis=-1)[..., np.newaxis] \
       if normalize is None else normalize
-    
+
     self._electrodes = self._electrodes / self._normalize
     msg = '\n\nAll the data was normalized. Refer to normalization coefficient as WindowGenerator_object().normalize'
     print(f"\x1b[32m{msg}\x1b[0m")
@@ -47,7 +49,7 @@ class WindowGenerator():
     """ Prints labels """
     print(self._label_channel[self._non_zero_label_inds])
 
-  
+
   def _plot_indices(self, n_subplots : Optional[int] = 10) -> None:
     """ Plots listen / repeat / noise indices """
     all_ind = np.concatenate([self._non_zero_label_inds, self._indices_noise])
@@ -78,7 +80,7 @@ class WindowGenerator():
       plt.xticks(label_dots)
       plt.yticks([0, 1])
       plt.grid()
-      
+
       if i == 0:
         plt.legend()
 
@@ -90,7 +92,7 @@ class WindowGenerator():
         return set(indices)
       else:
         return {}
-    
+
     ind = np.arange(self._label_channel.shape[0])
     ind = ind[self._label_channel > 0]
 
@@ -116,11 +118,11 @@ class WindowGenerator():
     """ Creates data sequences """
     indices_listen = self._non_zero_label_inds[::2]
     indices_repeat = self._non_zero_label_inds[1::2] + skip_in_repeat
-    
+
     if self._indices_noise is None:
       # first points in each noise interval
-      self._indices_noise = indices_listen - (self._length + 100) 
-      
+      self._indices_noise = indices_listen - (self._length + 100)
+
     arrays = [np.arange(i, i + self._length, dtype=int) for i in indices_listen]
     indices_listen = np.sort(np.concatenate(arrays, axis=0))
 
@@ -129,7 +131,7 @@ class WindowGenerator():
 
     arrays = [np.arange(i, i + self._length, dtype=int) for i in self._indices_noise]
     indices_noise = np.sort(np.concatenate(arrays, axis=0))
-      
+
     # must be 0 otherwise noise intervals overlap with label intervals!
     self._noise_max_label = np.max(self._label_channel[indices_noise])
 
@@ -142,13 +144,13 @@ class WindowGenerator():
     # so straight because of insufficient RAM problem...
     num_electrodes = self._raw_data.shape[0]
     for i in range(num_electrodes):
-      
+
       sig_listen = np.append(sig_listen, self._raw_data[i][indices_listen].
           reshape(n_events, self._length)[:, np.newaxis, :], axis=1)
-      
+
       sig_repeat = np.append(sig_repeat, self._raw_data[i][indices_repeat].
           reshape(n_events, self._length)[:, np.newaxis, :], axis=1)
-      
+
       sig_noise = np.append(sig_noise, self._raw_data[i][indices_noise].
           reshape(n_events, self._length)[:, np.newaxis, :], axis=1)
 
@@ -161,7 +163,7 @@ class WindowGenerator():
 
   def _check_noise(self, plots : int) -> bool:
     """ Checks whether noise points overlap with labels """
-    
+
     if self._noise_max_label:
       error = "\nNoise intervals overlap with labels. Please check them and set manually!"
       print(f"\x1b[31m{error}\x1b[0m")
@@ -179,7 +181,7 @@ class WindowGenerator():
                       shift=self._shift,
                       stride=self._stride,
                       drop_remainder=True)
-      
+
       flatten = lambda x: x.batch(self._window_size, drop_remainder=True)
       win = win.flat_map(flatten)
 
@@ -194,7 +196,7 @@ class WindowGenerator():
     self._repeat = window_ds(self._repeat)
     self._noise = window_ds(self._noise)
 
-  
+
   def _verb(self, listen_repeat_noise : Optional[Tuple[bool, bool, bool]]) -> None:
     """ Prints additional info """
     msg = np.array([
@@ -211,19 +213,19 @@ class WindowGenerator():
     self._repeat = np.moveaxis(self._repeat, -1, -2)
     self._noise = np.moveaxis(self._noise, -1, -2)
 
-  
+
   def _split_datasets(self,
                       listen_repeat_noise : Sequence[bool],
                       train_val_test : Sequence[float],
                       shuffle_before_splitting : bool) -> List[tf.data.Dataset]:
     """ Splits dataset according to shuffling parameter """
     self._n_sets = np.count_nonzero(train_val_test)
-    
+
     datasets = np.array([self._listen_ds, self._repeat_ds, self._noise_ds])
     datasets = datasets[listen_repeat_noise]
 
     if shuffle_before_splitting:
-      
+
       sizes = [int(self._num_examples * train_val_test[i]) for i in range(self._n_sets - 1)]
       sizes.append(self._num_examples - int(np.sum(sizes)))
       self._sizes = sizes
@@ -232,7 +234,7 @@ class WindowGenerator():
       if len(datasets) > 1:
         for ds in datasets[1:]:
           dataset = dataset.concatenate(ds)
-    
+
       dataset = dataset.shuffle(self._num_examples)
       datasets = []
 
@@ -253,7 +255,7 @@ class WindowGenerator():
         splitted.append([ds.take(size) for ds in datasets])
         datasets = [ds.skip(size) for ds in datasets]
       self._splitted = splitted
-      
+
       datasets = []
       for i in range(len(splitted)):
         first_dataset = splitted[i][0]
@@ -263,31 +265,50 @@ class WindowGenerator():
         datasets.append(first_dataset.shuffle(self._sizes[i]))
 
     return datasets
-  
 
-  def _cwt(self, name : Optional[str] = 'cmor1.5-0.25',
+
+  def _cwt(self,
            channel : Optional[int] = 25,
+           norm_skew : Optional[int] = 8,
            normalize : Optional[bool] = True,
            plot_cwt : Optional[bool] = True,
-           plot_indices : Optional[int] = 179) -> None:
-  
-    sr = self._mne_data[0].info['sfreq']
-    starting_rate = float(name.split('-')[-1]) 
-    starting_freq = sr * starting_rate
-    scales = starting_freq / np.arange(34, 0, -1)
-  
+           plot_indices : Optional[int] = [25, 42, 64, 179]) -> None:
+
+    fs = self._mne_data[0].info['sfreq']
+    num_freqs = 30
+
     def single_cwt(data):
-      data = data[:, channel, :]
-      data = np.squeeze(data)
-  
-      cwt, freqs = pywt.cwt(data=data, scales=scales, wavelet=name,
-                            sampling_period=1/sr, axis=-1)
-      return np.moveaxis(np.abs(cwt), 0, 1)
-  
-    self._listen = single_cwt(self._listen)
-    self._repeat = single_cwt(self._repeat)
-    self._noise = single_cwt(self._noise)
-  
+
+      num_samples = data.shape[0]
+      points = data.shape[-1]
+
+      freqs = np.arange(1, num_freqs + 1)
+      ws = np.linspace(4, 8, 30) # Wavelet widths
+
+      result = np.zeros((num_samples, num_freqs, points))
+
+      for i, f in enumerate(freqs):
+
+        s = ws[i]*fs / (2*f*np.pi)
+        x = np.arange(0, points) - (points - 1.0) / 2
+        x = x / s
+
+        # Add skewness
+        scaler = 2 * norm.pdf(x) * norm.cdf(norm_skew*x)
+
+        wavelet = np.exp(1j * ws[i] * x) * scaler * np.pi**(-0.25)
+        wvt = np.sqrt(1/s) * wavelet
+
+        convolved = [signal.convolve(raw, wvt, mode='same') for raw in data]
+        convolved = np.abs(np.stack(convolved))
+        result[:, i, :] = convolved
+
+      return result
+
+    self._listen = single_cwt(self._listen[:, channel, :])
+    self._repeat = single_cwt(self._repeat[:, channel, :])
+    self._noise = single_cwt(self._noise[:, channel, :])
+
     if normalize:
       x = np.concatenate([self._listen, self._repeat, self._noise], axis=-1)
       scale = np.max(x)
@@ -297,43 +318,43 @@ class WindowGenerator():
       self._cwt_norm = scale
       msg = 'CWT coefficients were normalized. Refer to normalization coefficient as WindowGenerator_object.cwt_norm'
       print(f"\x1b[32m{msg}\x1b[0m")
-  
+
     if plot_cwt:
       for plot_index in plot_indices:
-        fig = plt.figure(figsize=(24, 4))
+        fig = plt.figure(figsize=(24, 5))
         duration = self._listen.shape[-1]
-    
+
         ax = fig.add_subplot(131)
-        plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                      self._noise[plot_index], shading='flat', cmap='YlGn')
+        plt.pcolormesh(np.arange(duration), np.arange(1, num_freqs + 1),
+                        self._noise[plot_index], shading='flat', cmap='YlGn')
         plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
         plt.colorbar()
         plt.title('Noise')
-        
+
         ax = fig.add_subplot(132)
-        plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                      self._listen[plot_index], shading='flat', cmap='YlGn')
+        plt.pcolormesh(np.arange(duration), np.arange(1, num_freqs + 1),
+                        self._listen[plot_index], shading='flat', cmap='YlGn')
         plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
         plt.colorbar()
         plt.title('Listen')
-        
+
         ax = fig.add_subplot(133)
-        plt.pcolormesh(np.arange(duration), np.arange(34, 0, -1),
-                      self._repeat[plot_index], shading='flat', cmap='YlGn')
+        plt.pcolormesh(np.arange(duration), np.arange(1, num_freqs + 1),
+                        self._repeat[plot_index], shading='flat', cmap='YlGn')
         plt.ylabel('Frequency (Hz)'); plt.xlabel('Time (ms)')
         plt.colorbar()
         plt.title('Repeat')
-  
-  
+
+
   def create_dataset(self,
                      event_length : Optional[int] = 300,
                      indices_noise : Optional[np.ndarray] = None,
                      plot_indices : Optional[bool] = True,
                      skip_in_repeat : Optional[int] = 100,
                      listen_repeat_noise : Optional[Tuple[bool, bool, bool]] = [True, False, True],
-                     wavelet_name : Optional[str] = 'cmor1.5-0.25',
-                     cwt_channel : Optional[int] = 25,
                      apply_cwt : Optional[bool] = False,
+                     cwt_channel : Optional[int] = 25,
+                     norm_skew : Optional[int] = 0,
                      cwt_normalize : Optional[bool] = True,
                      cwt_plot : Optional[bool] = True,
                      cwt_inds_plot : Optional[List[int]] = [42, 179],
@@ -350,7 +371,7 @@ class WindowGenerator():
                      verbose : Optional[bool] = True) -> None:
     """
     Creates datasets
-    
+
     Args:
     Sequence generating parameters:
     event_length (optional) -- int. Length of the event. 300ms = 300 samples
@@ -363,8 +384,8 @@ class WindowGenerator():
     channels (optional) -- array of electrode channel indices to use in dataset (e.g. np.arange(19, 68))
     Wavelet transform parameters:
     apply_cwt (optional) -- bool, whether to apply continious wavelet transform
-    wavelet_name (optional) -- str, wavelet name (see: https://pywavelets.readthedocs.io/en/latest/ref/cwt.html#continuous-wavelet-families)
     cwt_channel (optional) -- int, which channel to use to perform wavelet transform
+    norm_skew (optional) -- int, defines gaussian skewness when creating wavelet
     normalize_cwt (optional) -- bool, whether to normalize cwt matrices
     plot_cwt (optional) -- bool, whether to plot noise / listen / repeat cwt graphs
     cwt_inds_plot (optional) -- array of int, if plot_cwt == True, which samples from dataset to use for plotting 
@@ -422,7 +443,7 @@ class WindowGenerator():
 
     # continious wavelet transform
     if apply_cwt:
-      self._cwt(wavelet_name, cwt_channel, cwt_normalize, cwt_plot, cwt_inds_plot)
+      self._cwt(cwt_channel, norm_skew, cwt_normalize, cwt_plot, cwt_inds_plot)
 
     # changes data axis mode
     if axis == 'bfc':
@@ -488,7 +509,7 @@ class WindowGenerator():
   def cwt_norm(self) -> float:
     return self._cwt_norm
 
-    
+
   @property
   def train(self) -> tf.data.Dataset:
     return self._train
