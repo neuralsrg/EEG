@@ -7,7 +7,6 @@ from scipy.stats import norm
 import mne
 from typing import Optional, List, Set, Tuple, Sequence
 
-
 class WindowGenerator():
 
   def __init__(self,
@@ -18,8 +17,8 @@ class WindowGenerator():
     self._electrodes = [mne_data.get_data() for mne_data in self._mne_data]
     self._electrodes = np.concatenate(self._electrodes, axis=-1)
     self._labeled_data = mne.io.RawArray(self._electrodes,
-                                          mne.create_info(self._mne_data[0].ch_names,
-                                                          1006.04, ch_types='eeg'))
+                                         mne.create_info(self._mne_data[0].ch_names,
+                                                         1006.04, ch_types='eeg'))
     self._label_channel = self._electrodes[-1]
     self._electrodes = self._electrodes[:-1]
 
@@ -47,7 +46,7 @@ class WindowGenerator():
 
   def print_inds(self):
     """ Prints labels """
-    print(self._label_channel[self._non_zero_label_inds])
+    print(self._label_channel[self._non_zero_label_inds][1::2])
 
 
   def _plot_indices(self, n_subplots : Optional[int] = 10) -> None:
@@ -358,6 +357,7 @@ class WindowGenerator():
                      cwt_normalize : Optional[bool] = True,
                      cwt_plot : Optional[bool] = True,
                      cwt_inds_plot : Optional[List[int]] = [42, 179],
+                     phoneme_classification : Optional[bool] = False,
                      train_val_test : Optional[Tuple[float, float, float]] = [.8, .2, 0],
                      shuffle_before_splitting : Optional[bool] = True,
                      batch_size : Optional[int] = 32,
@@ -371,8 +371,8 @@ class WindowGenerator():
                      verbose : Optional[bool] = True) -> None:
     """
     Creates datasets
-
     Args:
+
     Sequence generating parameters:
     event_length (optional) -- int. Length of the event. 300ms = 300 samples
     indices_noise (optional) -- np.array of first points in each noise interval of shape same as
@@ -382,20 +382,24 @@ class WindowGenerator():
     listen_repeat_noise (optional) -- List[bool, bool, bool]. Specifies whitch data to include in the dataset
       The first bool refers to listen, the second to repeat etc.
     channels (optional) -- array of electrode channel indices to use in dataset (e.g. np.arange(19, 68))
+
     Wavelet transform parameters:
     apply_cwt (optional) -- bool, whether to apply continious wavelet transform
     cwt_channel (optional) -- int, which channel to use to perform wavelet transform
     norm_skew (optional) -- int, defines gaussian skewness when creating wavelet
     normalize_cwt (optional) -- bool, whether to normalize cwt matrices
     plot_cwt (optional) -- bool, whether to plot noise / listen / repeat cwt graphs
-    cwt_inds_plot (optional) -- array of int, if plot_cwt == True, which samples from dataset to use for plotting 
+    cwt_inds_plot (optional) -- array of int, if plot_cwt == True, which samples from dataset to use for plotting
+
     Dataset generating parameters:
+    phoneme_classification (optional) -- bool. Whether to label dataset according to the phoneme codes
     train_val_test (optional) -- List[float, float, float]. Specifies train/val/test ratios respectively
     shuffle_before_splitting (optional) -- bool. Whether to shuffler data before splitting into
       train / val / test or after
     batch_size (optional) -- batch size
     axis (optional) -- str. Either 'bcf' (batch, channels, features) or 'bfc' (batch, features, channels).
       'bfc' is usually used with RNNs. Use 'bcf' in most other cases.
+
     Windowing parameters: (not recommended when using wavelet transform)
     split_windows (optional) -- bool. Whether to breake neural data sequences down into smaller ones
     window_size (optional) -- int. Used if split_windows == True. The length of the smaller windows
@@ -403,6 +407,7 @@ class WindowGenerator():
       If None, then smaller windows do not overlap.
     stride (optional) -- int. Used if split_windows == True. Determines the stride between input elements within a window.
       Not recommended to change!
+
     Verbosity parameters:
     plots (optional) -- int. Number of subplots in label - noise plot
     verbose : Optional[bool] = True. Whether to print logging messages
@@ -453,32 +458,47 @@ class WindowGenerator():
     if verbose:
       self._verb(listen_repeat_noise)
 
-    self._listen_ds = tf.data.Dataset.from_tensor_slices(self._listen)
-    self._repeat_ds = tf.data.Dataset.from_tensor_slices(self._repeat)
-    self._noise_ds = tf.data.Dataset.from_tensor_slices(self._noise)
-
     # total number of samples in dataset
     num_examples = np.count_nonzero(listen_repeat_noise) * self._listen.shape[0]
     self._num_examples = num_examples
     print('Total number of elements in the dataset:', num_examples)
 
-    # labeling dataset
-    assert np.count_nonzero(listen_repeat_noise) >= 2
-    noise_listen_repeat = np.array(listen_repeat_noise)[[2, 0, 1]]
-    it = iter([0, 1, 2])
-    labels = []
-    for b in noise_listen_repeat:
-      apnd = next(it) if b else 2
-      labels.append(apnd)
+    # creating the datasets
+    if not phoneme_classification:
+      noise_listen_repeat = np.array(listen_repeat_noise)[[2, 0, 1]]
 
-    assert set(labels) == set([0, 1, 2])
-    noise_lambda = lambda x: (x, labels[0])
-    listen_lambda = lambda x: (x, labels[1])
-    repeat_lambda = lambda x: (x, labels[2])
+      self._listen_ds = tf.data.Dataset.from_tensor_slices(self._listen)
+      self._repeat_ds = tf.data.Dataset.from_tensor_slices(self._repeat)
+      self._noise_ds = tf.data.Dataset.from_tensor_slices(self._noise)
 
-    self._listen_ds = self._listen_ds.map(listen_lambda, num_parallel_calls=tf.data.AUTOTUNE)
-    self._repeat_ds = self._repeat_ds.map(repeat_lambda, num_parallel_calls=tf.data.AUTOTUNE)
-    self._noise_ds = self._noise_ds.map(noise_lambda, num_parallel_calls=tf.data.AUTOTUNE)
+      # labeling
+      assert np.count_nonzero(listen_repeat_noise) >= 2
+      it = iter([0, 1, 2])
+      labels = []
+      for b in noise_listen_repeat:
+        apnd = next(it) if b else 2
+        labels.append(apnd)
+
+      assert set(labels) == set([0, 1, 2])
+      noise_lambda = lambda x: (x, labels[0])
+      listen_lambda = lambda x: (x, labels[1])
+      repeat_lambda = lambda x: (x, labels[2])
+
+      self._listen_ds = self._listen_ds.map(listen_lambda, num_parallel_calls=tf.data.AUTOTUNE)
+      self._repeat_ds = self._repeat_ds.map(repeat_lambda, num_parallel_calls=tf.data.AUTOTUNE)
+      self._noise_ds = self._noise_ds.map(noise_lambda, num_parallel_calls=tf.data.AUTOTUNE)
+
+      sets = np.array(['Noise', 'Listen', 'Repeat'])[noise_listen_repeat]
+      labels = np.array(labels)[noise_listen_repeat]
+      msg = [f'{s} was encoded with label {labels[i]}' for i, s in enumerate(sets)]
+      msg = '\n'.join(msg)
+      print(f"\n\x1b[32m{msg}\x1b[0m")
+
+    else:
+      labels = self._label_channel[self._non_zero_label_inds][1::2] - 1
+      self._listen_ds = tf.data.Dataset.from_tensor_slices((self._listen, labels))
+      self._repeat_ds = tf.data.Dataset.from_tensor_slices((self._repeat, labels))
+      self._noise_ds = tf.data.Dataset.from_tensor_slices((self._noise, labels))
 
     # splitting into train / dev / test
     datasets = self._split_datasets(listen_repeat_noise, train_val_test, shuffle_before_splitting)
@@ -491,12 +511,6 @@ class WindowGenerator():
     print('\nRefer to datasets as:')
     msg = [f'\t WindowGenerator_object.{s}' for s in sets]
     print('\n'.join(msg))
-
-    sets = np.array(['Noise', 'Listen', 'Repeat'])[noise_listen_repeat]
-    labels = np.array(labels)[noise_listen_repeat]
-    msg = [f'{s} was encoded with label {labels[i]}' for i, s in enumerate(sets)]
-    msg = '\n'.join(msg)
-    print(f"\n\x1b[32m{msg}\x1b[0m")
 
     self._train = datasets[0].batch(batch_size).cache().prefetch(tf.data.AUTOTUNE)
     if len(datasets) > 1:

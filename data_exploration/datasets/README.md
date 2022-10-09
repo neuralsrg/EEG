@@ -51,6 +51,7 @@ cwt_inds_plot (optional) -- sequence of int, if plot_cwt == True, which samples 
 
 Dataset generating parameters:
 
+phoneme_classification (optional) -- bool. Whether to label dataset according to the phoneme codes
 train_val_test (optional) -- List[float, float, float]. Specifies train/val/test ratios respectively
 shuffle_before_splitting (optional) -- bool. Whether to shuffler data before splitting into
   train / val / test or after
