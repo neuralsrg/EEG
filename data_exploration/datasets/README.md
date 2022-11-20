@@ -4,21 +4,24 @@
 
 Creates datasets based on .EDF file(s).
 
-1. Create `generator`
+1. Create `generator` specifying path to either edf or csv files 
 ```
 path = '/path/to/file.EDF'
-generator = WindowGenerator([path1]) # list here is important
+generator = WindowGenerator(paths_edf=[path]) # list here is important
+
+path = '/path/to/file.csv'
+generator = WindowGenerator(paths_csv=[path]) # list here is important
 ```
-You can also concatenate **multiple** .EDF files into one dataset:
+You can also concatenate **multiple** files into one dataset:
 ```
 path1 = '/path/to/file.EDF'
 path2 = '/path/to/file.EDF'
-generator = WindowGenerator([path1, path2])
+generator = WindowGenerator(paths_edf=[path1, path2])
 ```
 
 2. (Optional) Learn some dataset info (number of events, number of channels, filtering info, `df.describe` etc.)
 ```
-generator.eeg_info()
+generator.eeg_info()  # only when using .edf files
 ```
 Each electrode channel is `normalized`. You can get `normalization vector`:
 ```

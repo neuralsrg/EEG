@@ -1,4 +1,5 @@
 import numpy as np
+import re
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -10,17 +11,38 @@ from typing import Optional, List, Set, Tuple, Sequence
 class WindowGenerator():
 
   def __init__(self,
-               paths : Sequence[str],
+               paths_edf : Sequence[str] = None,
+               paths_csv : Sequence[str] = None,
                normalize : Optional[Sequence[float]] = None) -> None:
-    assert type(paths) == list
-    self._mne_data = [mne.io.read_raw_edf(path) for path in paths]
-    self._electrodes = [mne_data.get_data() for mne_data in self._mne_data]
-    self._electrodes = np.concatenate(self._electrodes, axis=-1)
-    self._labeled_data = mne.io.RawArray(self._electrodes,
-                                         mne.create_info(self._mne_data[0].ch_names,
-                                                         1006.04, ch_types='eeg'))
-    self._label_channel = self._electrodes[-1]
-    self._electrodes = self._electrodes[:-1]
+    assert type(paths_edf) == list or type(paths_csv) == list
+    self._electrodes = None
+    self._fs = None
+    if paths_edf is not None:
+        self._mne_data = [mne.io.read_raw_edf(path) for path in paths_edf]
+        self._electrodes = [mne_data.get_data() for mne_data in self._mne_data]
+        self._electrodes = np.concatenate(self._electrodes, axis=-1)
+        self._labeled_data = mne.io.RawArray(self._electrodes,
+                                            mne.create_info(self._mne_data[0].ch_names,
+                                                            1006.04, ch_types='eeg'))
+        self._label_channel = self._electrodes[-1]
+        self._electrodes = self._electrodes[:-1]
+
+    if paths_csv is not None:
+        self._fs = 1006.04  # Hz
+        self._mne_data = None
+        dfs =  [pd.read_csv(path, sep=';') for path in paths_csv]
+        labels = [df['label'] for df in dfs]
+        self._label_channel = np.concatenate(labels, axis=-1)
+        cols = ' '.join(dfs[0].columns)
+        pattern = re.compile(r'(e\d+)')
+        matches = pattern.finditer(cols)
+        columns = [match.group(1) for match in matches]
+        electrodes = [df[columns].to_numpy().T for df in dfs]
+        self._electrodes = np.concatenate(electrodes, axis=-1)
+
+    if self._electrodes is None:
+        print('Error! Specify either paths_edf or paths_csv')
+        return
 
     self._normalize = np.max(np.abs(self._electrodes), axis=-1)[..., np.newaxis] \
       if normalize is None else normalize
@@ -29,7 +51,11 @@ class WindowGenerator():
     msg = '\n\nAll the data was normalized. Refer to normalization coefficient as WindowGenerator_object().normalize'
     print(f"\x1b[32m{msg}\x1b[0m")
 
-    self._df = pd.DataFrame(self._electrodes.T, columns=self._mne_data[0].ch_names[:-1])
+    if paths_edf is not None:
+        self._df = pd.DataFrame(self._electrodes.T, columns=self._mne_data[0].ch_names[:-1])
+    else:
+        self._df = pd.DataFrame(self._electrodes.T, columns=columns)
+
 
 
   @property
@@ -39,6 +65,8 @@ class WindowGenerator():
 
   def eeg_info(self) -> pd.DataFrame:
     """ Prints eeg data info """
+    if self._mne_data is None:
+        print('Unable to describe eeg data, since csv files were used')
     for mne_data in self._mne_data:
       print(mne_data.info, '\n')
     return self._df.describe().transpose().head(68)
@@ -273,7 +301,10 @@ class WindowGenerator():
            plot_cwt : Optional[bool] = True,
            plot_indices : Optional[int] = [25, 42, 64, 179]) -> None:
 
-    fs = self._mne_data[0].info['sfreq']
+    if self._fs is not None:
+        fs = self._fs
+    else:
+        fs = self._mne_data[0].info['sfreq']
     num_freqs = 30
 
     def single_cwt(data):
@@ -372,7 +403,6 @@ class WindowGenerator():
     """
     Creates datasets
     Args:
-
     Sequence generating parameters:
     event_length (optional) -- int. Length of the event. 300ms = 300 samples
     indices_noise (optional) -- np.array of first points in each noise interval of shape same as
@@ -382,7 +412,6 @@ class WindowGenerator():
     listen_repeat_noise (optional) -- List[bool, bool, bool]. Specifies whitch data to include in the dataset
       The first bool refers to listen, the second to repeat etc.
     channels (optional) -- array of electrode channel indices to use in dataset (e.g. np.arange(19, 68))
-
     Wavelet transform parameters:
     apply_cwt (optional) -- bool, whether to apply continious wavelet transform
     cwt_channel (optional) -- int, which channel to use to perform wavelet transform
@@ -390,7 +419,6 @@ class WindowGenerator():
     normalize_cwt (optional) -- bool, whether to normalize cwt matrices
     plot_cwt (optional) -- bool, whether to plot noise / listen / repeat cwt graphs
     cwt_inds_plot (optional) -- array of int, if plot_cwt == True, which samples from dataset to use for plotting
-
     Dataset generating parameters:
     phoneme_classification (optional) -- bool. Whether to label dataset according to the phoneme codes
     train_val_test (optional) -- List[float, float, float]. Specifies train/val/test ratios respectively
@@ -399,7 +427,6 @@ class WindowGenerator():
     batch_size (optional) -- batch size
     axis (optional) -- str. Either 'bcf' (batch, channels, features) or 'bfc' (batch, features, channels).
       'bfc' is usually used with RNNs. Use 'bcf' in most other cases.
-
     Windowing parameters: (not recommended when using wavelet transform)
     split_windows (optional) -- bool. Whether to breake neural data sequences down into smaller ones
     window_size (optional) -- int. Used if split_windows == True. The length of the smaller windows
@@ -407,7 +434,6 @@ class WindowGenerator():
       If None, then smaller windows do not overlap.
     stride (optional) -- int. Used if split_windows == True. Determines the stride between input elements within a window.
       Not recommended to change!
-
     Verbosity parameters:
     plots (optional) -- int. Number of subplots in label - noise plot
     verbose : Optional[bool] = True. Whether to print logging messages
