@@ -5,3 +5,6 @@
 matrices
 **/.matrices
 runs
+.csv
+.h5
+data
