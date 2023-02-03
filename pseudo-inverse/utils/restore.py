@@ -17,3 +17,10 @@ def restore(D, frame_size, hop_length, epochs=100, window='hann'):
         x_ = librosa.istft(mag * phase, hop_length=hop_length, center=False, window=window)
         
     return x_[hop_length:-hop_length]
+
+
+def restore_matrix(M, frame_size, hop_length, epochs=100, window='hann'):
+    freq_bins = frame_size // 2 + 1
+    M = M.reshape(-1, freq_bins).T
+
+    return restore(M, frame_size, hop_length, epochs=epochs, window=window)
