@@ -65,10 +65,7 @@ def validate(rank, model, criterion, val_dl):
     for x, label in (val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
         loss = run_batch(x.to(rank), label.to(rank))
         if master_process:
-            print(loss)
-            print(loss.size())
             tensor_list = [loss.new_zeros((0,)) for _ in range(2)]
-            print(tensor_list.size(0))
             dist.gather(loss, tensor_list)
             print(f'Got tensor_list: {tensor_list}')
         else:
