@@ -44,7 +44,7 @@ def train(rank, model, train_dl, criterion, optimizer):
         pred = model(x)
         loss = criterion(pred, label)
         loss.backward()
-        print(f'[{rank}] Grad: {model.weight.grad}')
+        print(f'[{rank}] Grad: {model.module.weight.grad}')
         optimizer.step()
     
     print(f'[{rank}] Final weight: {model.weight}')
