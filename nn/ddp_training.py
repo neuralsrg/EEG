@@ -21,7 +21,7 @@ def ddp_setup(rank, world_size):
     torch.cuda.set_device(rank)
 
 def test(rank: int, world_size: int):
-    t = torch.empty(1).fill_(rank)
+    t = torch.empty(1).fill_(rank).to(rank)
     print(f'[{rank}] t = {t}')
 
     if rank == 0:
