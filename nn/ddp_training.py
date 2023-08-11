@@ -20,13 +20,21 @@ def ddp_setup(rank, world_size):
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
 
-def test(rank: int):
+def test(rank: int, world_size: int):
     t = torch.empty(1).fill_(rank)
     print(f'[{rank}] t = {t}')
 
+    if rank == 0:
+        tensor_list = [torch.empty(1) for _ in range(world_size)]
+        torch.distributed.gather(t, gather_list=tensor_list, dst=0)
+        print(f'[{rank}] tensor_list = {tensor_list}')
+        print(f'Mean value: {torch.mean(torch.tensor(tensor_list)).item()}')
+    else:
+        torch.distributed.gather(t, gather_list=[], dst=0)
+
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
-    test(rank)
+    test(rank, world_size)
     destroy_process_group()
 
 
