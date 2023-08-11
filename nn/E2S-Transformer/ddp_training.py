@@ -47,7 +47,7 @@ def train(rank, model, train_dl, criterion, optimizer):
         print(f'[{rank}] Grad: {model.module.weight.grad}')
         optimizer.step()
     
-    print(f'[{rank}] Final weight: {model.weight}')
+    print(f'[{rank}] Final weight: {model.module.weight}')
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
