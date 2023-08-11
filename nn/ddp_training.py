@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.multiprocessing as mp
 from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
 import os
 
@@ -21,16 +22,12 @@ def ddp_setup(rank, world_size):
     torch.cuda.set_device(rank)
 
 def test(rank: int, world_size: int):
-    t = torch.empty(1).fill_(rank).to(rank)
-    print(f'[{rank}] t = {t}')
+    tensor_list = [torch.zeros(2, dtype=torch.int64) for _ in range(2)]
+    tensor = torch.arange(2, dtype=torch.int64) + 1 + 2 * rank
+    print(f'[{rank}] tensor = {tensor}')
+    dist.all_gather(tensor_list, tensor)
+    print(f'[{rank}] tensor_list = {tensor_list}')
 
-    if rank == 0:
-        tensor_list = [torch.empty(1) for _ in range(world_size)]
-        torch.distributed.gather(t, gather_list=tensor_list, dst=0)
-        print(f'[{rank}] tensor_list = {tensor_list}')
-        print(f'Mean value: {torch.mean(torch.tensor(tensor_list)).item()}')
-    else:
-        torch.distributed.gather(t, gather_list=[], dst=0)
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
