@@ -12,7 +12,7 @@ import os
 from data import ToyDataset, get_dl
 from model import get_model
 
-from tqdm.notebook import tqdm, trange
+from tqdm import tqdm, trange
 
 
 def ddp_setup(rank, world_size):
@@ -47,14 +47,11 @@ def train(rank, model, train_dl, criterion, optimizer):
         return loss.item()
 
     model = DDP(model.to(rank), device_ids=[rank])
+    master_process = rank == 0
 
-    if rank == 0:
-        for x, label in (pbar := tqdm(train_dl, total=len(train_dl))):
-            loss = run_batch(x.to(rank), label.to(rank))
-            pbar.set_description(f'Train Loss: {loss}')
-    else:
-        for x, label in train_dl:
-            _ = run_batch(x.to(rank), label.to(rank))
+    for x, label in (pbar := tqdm(train_dl, total=len(train_dl), disable=(not master_process))):
+        loss = run_batch(x.to(rank), label.to(rank))
+        pbar.set_description(f'Train Loss: {loss}')
     
 def validate(rank, model, criterion, val_dl):
     def run_batch(x, label):
