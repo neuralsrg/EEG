@@ -10,7 +10,7 @@ class ToyDataset(Dataset):
         return 100
 
     def __getitem__(self, index):
-        return torch.rand(25), torch.randint(0, 2, (8,))
+        return torch.rand(25), torch.randint(0, 2, (8,)).float()
 
 
 def get_dl(dataset, batch_size=10):
