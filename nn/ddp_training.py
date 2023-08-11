@@ -28,7 +28,10 @@ def test(rank: int):
     tensor_list = [torch.empty(1).to(rank) for _ in range(2)]
     print(f'[{rank}] tensor = {t}')
     # dist.all_gather(tensor_list, tensor)
-    dist.gather(t, tensor_list)
+    if rank == 0:
+        dist.gather(t, tensor_list)
+    else:
+        dist.gather(t)
     print(f'[{rank}] tensor_list = {tensor_list}')
 
 
