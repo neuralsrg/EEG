@@ -22,8 +22,8 @@ def ddp_setup(rank, world_size):
     torch.cuda.set_device(rank)
 
 def test(rank: int, world_size: int):
-    tensor_list = [torch.zeros(2, dtype=torch.int64) for _ in range(2)]
-    tensor = torch.arange(2, dtype=torch.int64) + 1 + 2 * rank
+    tensor_list = [torch.zeros(2, dtype=torch.int64).to(rank) for _ in range(2)]
+    tensor = (torch.arange(2, dtype=torch.int64) + 1 + 2 * rank).to(rank)
     print(f'[{rank}] tensor = {tensor}')
     dist.all_gather(tensor_list, tensor)
     print(f'[{rank}] tensor_list = {tensor_list}')
