@@ -67,7 +67,6 @@ def validate(rank, model, criterion, val_dl):
         if master_process:
             tensor_list = [loss.new_empty(()) for _ in range(2)]
             dist.gather(loss, tensor_list)
-            print(f'Got tensor_list: {tensor_list}')
             val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
         else:
             dist.gather(loss)
