@@ -54,7 +54,7 @@ def main(rank: int, world_size: int):
     model = get_model()
     train_dl = get_dl(ToyDataset())
     criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters, lr=0.01)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
     destroy_process_group()
 
