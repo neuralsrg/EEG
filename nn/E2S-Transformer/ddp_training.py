@@ -81,7 +81,7 @@ def main(rank: int, world_size: int):
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
-    validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
+    # validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
     destroy_process_group()
 
 
