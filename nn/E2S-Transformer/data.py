@@ -7,7 +7,7 @@ class ToyDataset(Dataset):
         super().__init__()
     
     def __len__(self) -> int:
-        return 100
+        return 1000
 
     def __getitem__(self, index):
         return torch.rand(25), torch.randint(0, 2, (8,)).float()

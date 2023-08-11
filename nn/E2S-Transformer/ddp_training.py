@@ -12,6 +12,8 @@ import os
 from data import ToyDataset, get_dl
 from model import get_model
 
+from tqdm.notebook import tqdm, trange
+
 
 def ddp_setup(rank, world_size):
     """
@@ -35,27 +37,51 @@ def gather_test(rank: int):
         dist.gather(t)
 
 def train(rank, model, train_dl, criterion, optimizer):
-    model = DDP(model.to(rank), device_ids=[rank])
 
-    for x, label in train_dl:
-        print(f'{rank} Input shape: {x.size()}')
+    def run_batch(x, label):
         optimizer.zero_grad()
-        x, label = x.to(rank), label.to(rank)
         pred = model(x)
         loss = criterion(pred, label)
         loss.backward()
-        print(f'[{rank}] Grad: {model.module.weight.grad}')
         optimizer.step()
+        return loss.item()
+
+    model = DDP(model.to(rank), device_ids=[rank])
+
+    if rank == 0:
+        for x, label in (pbar := tqdm(train_dl, total=len(train_dl))):
+            loss = run_batch(x.to(rank), label.to(rank))
+            pbar.set_description(f'Train Loss: {loss}')
+    else:
+        for x, label in train_dl:
+            _ = run_batch(x.to(rank), label.to(rank))
     
-    print(f'[{rank}] Final weight: {model.module.weight}')
+def validate(rank, model, criterion, val_dl):
+    def run_batch(x, label):
+        pred = model(x)
+        loss = criterion(pred, label)
+        return loss
+
+    if rank == 0:
+        for x, label in (val_pbar := tqdm(val_dl, total=len(val_dl))):
+            loss = run_batch(x.to(rank), label.to(rank))
+            tensor_list = [torch.empty(1).to(rank) for _ in range(2)]
+            dist.gather(loss, tensor_list)
+            val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
+    else:
+        for x, label in val_dl:
+            loss = run_batch(x.to(rank), label.to(rank))
+            dist.gather(loss)
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
     model = get_model()
     train_dl = get_dl(ToyDataset())
+    val_dl = get_dl(ToyDataset())
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
+    validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
     destroy_process_group()
 
 
