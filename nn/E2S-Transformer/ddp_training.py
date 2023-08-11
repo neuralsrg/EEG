@@ -59,16 +59,19 @@ def validate(rank, model, criterion, val_dl):
         loss = criterion(pred, label)
         return loss
 
-    if rank == 0:
-        for x, label in (val_pbar := tqdm(val_dl, total=len(val_dl))):
-            loss = run_batch(x.to(rank), label.to(rank))
-            tensor_list = [torch.empty(1).to(rank) for _ in range(2)]
+    model = DDP(model.to(rank), device_ids=[rank]).eval()
+    master_process = rank == 0
+
+    for x, label in (val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
+        loss = run_batch(x.to(rank), label.to(rank))
+        if master_process:
+            tensor_list = [loss.new_zeros((1,)) for _ in range(2)]
             dist.gather(loss, tensor_list)
-            val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
-    else:
-        for x, label in val_dl:
-            loss = run_batch(x.to(rank), label.to(rank))
+            print(f'Got tensor_list: {tensor_list}')
+        else:
             dist.gather(loss)
+        val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
+    model.train()
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
@@ -78,7 +81,7 @@ def main(rank: int, world_size: int):
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
-    # validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
+    validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
     destroy_process_group()
 
 
