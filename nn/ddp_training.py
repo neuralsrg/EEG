@@ -21,7 +21,7 @@ def ddp_setup(rank, world_size):
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
 
-def test(rank: int, world_size: int):
+def test(rank: int):
     tensor_list = [torch.zeros(2, dtype=torch.int64).to(rank) for _ in range(2)]
     tensor = (torch.arange(2, dtype=torch.int64) + 1 + 2 * rank).to(rank)
     print(f'[{rank}] tensor = {tensor}')
@@ -31,7 +31,7 @@ def test(rank: int, world_size: int):
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
-    test(rank, world_size)
+    test(rank)
     destroy_process_group()
 
 
