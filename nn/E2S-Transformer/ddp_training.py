@@ -9,6 +9,9 @@ import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
 import os
 
+from data import ToyDataset, get_dl
+from model import get_model
+
 
 def ddp_setup(rank, world_size):
     """
@@ -21,23 +24,38 @@ def ddp_setup(rank, world_size):
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
 
-def test(rank: int):
-    # tensor_list = [torch.zeros(2, dtype=torch.int64).to(rank) for _ in range(2)]
-    # tensor = (torch.arange(2, dtype=torch.int64) + 1 + 2 * rank).to(rank)
+def gather_test(rank: int):
     t = torch.empty(1).fill_(rank).to(rank)
-    tensor_list = [torch.empty(1).to(rank) for _ in range(2)]
     print(f'[{rank}] tensor = {t}')
-    # dist.all_gather(tensor_list, tensor)
     if rank == 0:
+        tensor_list = [torch.empty(1).to(rank) for _ in range(2)]
         dist.gather(t, tensor_list)
+        print(f'[{rank}] tensor_list = {tensor_list}')
     else:
         dist.gather(t)
-    print(f'[{rank}] tensor_list = {tensor_list}')
 
+def train(rank, model, train_dl, criterion, optimizer):
+    model = DDP(model.to(rank), device_ids=[rank])
+
+    for x, label in train_dl:
+        print(f'{rank} Input shape: {x.size()}')
+        optimizer.zero_grad()
+        x, label = x.to(rank), label.to(rank)
+        pred = model(x)
+        loss = criterion(pred, label)
+        loss.backward()
+        print(f'[{rank}] Grad: {model.weight.grad}')
+        optimizer.step()
+    
+    print(f'[{rank}] Final weight: {model.weight}')
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
-    test(rank)
+    model = get_model()
+    train_dl = get_dl(ToyDataset())
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.SGD(model.parameters, lr=0.01)
+    train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
     destroy_process_group()
 
 
