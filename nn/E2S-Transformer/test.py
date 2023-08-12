@@ -6,7 +6,7 @@ from hydra.utils import instantiate
 def main(cfg: DictConfig) -> None:
     dataset = instantiate(cfg.dataset)
 
-    print(dataset[0])
+    print(dataset[15283])
     print('='*20)
     print(cfg.dataset.audio_maps['syllables'][int(11)])
 
