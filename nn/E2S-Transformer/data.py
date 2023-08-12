@@ -40,12 +40,12 @@ class EEGDataset(Dataset):
         '''
         super().__init__()
         self.path = path
-        self.audio_maps = audio_maps,
-        self.fragment_length = fragment_length,
-        self.partition_size = partition_size,
-        self.sample_rate = sample_rate,
-        self.sound_channel = sound_channel,
-        self.val_ratio = val_ratio,
+        self.audio_maps = audio_maps
+        self.fragment_length = fragment_length
+        self.partition_size = partition_size
+        self.sample_rate = sample_rate
+        self.sound_channel = sound_channel
+        self.val_ratio = val_ratio
         self.seed = seed
 
         rnd = random.Random(seed)
