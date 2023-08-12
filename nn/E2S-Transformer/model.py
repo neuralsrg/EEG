@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/kaggle/working/PyTorchWavelets/')
+
 import math
 from typing import Optional, List
 
