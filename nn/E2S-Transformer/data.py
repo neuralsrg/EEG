@@ -104,7 +104,8 @@ class EEGDataset(Dataset):
         Get audio by section and corresponding label
         '''
         section_name = self.sections[section]
-        audio, current_sr = torchaudio.load(self.audio_maps[section_name][label])
+        print(list(self.audio_maps[section_name].keys()))
+        audio, current_sr = torchaudio.load(self.audio_maps[section_name][str(label)])
         audio = torchaudio.functional.resample(audio, orig_freq=current_sr, new_freq=self.sample_rate)
         return audio[self.sound_channel]
     
