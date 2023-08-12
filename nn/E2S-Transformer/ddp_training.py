@@ -117,6 +117,7 @@ def validate(rank, model, criterion, val_dl):
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
     train_dl, val_dl, model = get_training_data()
+    print(f'train_dl: {len(train_dl)} batches, val_dl: {len(val_dl)} batches.')
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
