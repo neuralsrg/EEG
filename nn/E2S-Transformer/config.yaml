@@ -69,4 +69,6 @@ dataset:
   sample_rate: 44100
   sound_channel: 1
   val_ratio: 0.15
+  sound_size: 50176
+  in_seq_len: 1145
   seed: 1337

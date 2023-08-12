@@ -30,6 +30,8 @@ class EEGDataset(Dataset):
         sample_rate: int,
         sound_channel: int,
         val_ratio: float,
+        sound_size: int,
+        in_seq_len: int,
         seed: int,
     ) -> None:
         '''
@@ -46,6 +48,8 @@ class EEGDataset(Dataset):
         self.sample_rate = sample_rate
         self.sound_channel = sound_channel
         self.val_ratio = val_ratio
+        self.sound_size = sound_size
+        self.in_seq_len = in_seq_len
         self.seed = seed
 
         rnd = random.Random(seed)
@@ -104,8 +108,7 @@ class EEGDataset(Dataset):
         Get audio by section and corresponding label
         '''
         section_name = self.sections[section]
-        print(list(self.audio_maps[section_name].keys()))
-        audio, current_sr = torchaudio.load(self.audio_maps[section_name][int(label)])
+        audio, current_sr = torchaudio.load(self.audio_maps[section_name][label])
         audio = torchaudio.functional.resample(audio, orig_freq=current_sr, new_freq=self.sample_rate)
         return audio[self.sound_channel]
     
@@ -122,12 +125,12 @@ class EEGDataset(Dataset):
         end = start + self.fragment_length
         
         data = pd.read_feather(file_path).to_numpy()
-        x, label = torch.tensor(data[start:end, 1:]), data[start, 0].astype(int)
+        x, label = torch.tensor(data[start:end, 1:]), int(data[start, 0])
         
         audio = self.get_audio(section, label)
         
         # Cut model inputs so that they match desirable sizes
-        E, S = self.config['in_seq_len'], self.config['sound_size']
+        E, S = self.in_seq_len, self.sound_size
         x = x[:E] if x.size(0) >= E else nn.functional.pad(x, (0, E-x.size(0)), value=0)
         audio = audio[:S] if audio.size(0) >= S else nn.functional.pad(audio, (0, S-audio.size(0)), value=0)
         
@@ -135,22 +138,8 @@ class EEGDataset(Dataset):
         
         return x.float(), audio.float()
 
-def get_dl(config, batch_size=32):
-    train_ds = EEGDataset(config=config)
-    val_ds = EEGDataset(config=config).set_val_mode(True)
-
-    train_dl = DataLoader(
-        train_ds,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-        sampler=DistributedSampler(train_ds)
-    )
-    val_dl = DataLoader(
-        val_ds,
-        batch_size=batch_size,
-        pin_memory=True,
-        shuffle=False,
-        sampler=DistributedSampler(val_ds)
-    )
-    return train_dl, val_dl
+def get_dl(train_ds: Dataset, val_ds: Dataset, batch_size: int = 32):
+    dls = [DataLoader(ds, batch_size=batch_size, pin_memory=True,
+                      shuffle=False, sampler=DistributedSampler(ds))
+           for ds in (train_ds, val_ds)]
+    return dls
