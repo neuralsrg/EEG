@@ -45,6 +45,7 @@ def get_training_data():
         n_wvt_bins=cfg.model.n_wvt_bins,
         d_model=cfg.model.d_model,
         kernel_size=cfg.model.kernel_size,
+        conv_module_dropout=cfg.model.conv_module_dropout,
         emb_dropout=cfg.model.emb_dropout,
         in_seq_len=cfg.model.in_seq_len,
         n_fft=cfg.model.n_fft,
