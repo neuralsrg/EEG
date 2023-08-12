@@ -126,5 +126,5 @@ model:
   dj: 0.8
 
 training:
-  batch_size: 16
+  batch_size: 10
   step_every: 4

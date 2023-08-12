@@ -1,5 +1,6 @@
 import os
 import warnings
+warnings.filterwarnings("ignore")
 from tqdm import tqdm, trange
 
 import hydra
@@ -91,8 +92,6 @@ def train(rank, model, train_dl, criterion, optimizer, step_every):
             break
         ##############
     
-    print(f'[{rank}] FFN weight: {model.module.ffn.weight}')
-    
 def validate(rank, model, criterion, val_dl):
     def run_batch(eeg, audio):
         pred_encoding, encoding = model(eeg, audio)
@@ -122,7 +121,6 @@ def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
     cfg = OmegaConf.load("config.yaml")
     train_dl, val_dl, model = get_training_data(cfg)
-    print(f'train_dl: {len(train_dl)} batches, val_dl: {len(val_dl)} batches.')
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
     train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer,
@@ -137,7 +135,6 @@ if __name__ == "__main__":
     # parser.add_argument('total_epochs', type=int, help='Total epochs to train the model')
     # args = parser.parse_args()
     
-    warnings.filterwarnings("ignore")
     world_size = torch.cuda.device_count()
     # mp.spawn(main, args=(world_size, args.save_every, args.total_epochs, args.batch_size), nprocs=world_size)
     mp.spawn(main, args=(world_size, ), nprocs=world_size)
