@@ -63,15 +63,14 @@ def get_training_data():
         example_input=train_ds[0][0]
     )
 
-    print(model)
     return train_dl, val_dl, model
 
 def train(rank, model, train_dl, criterion, optimizer):
 
-    def run_batch(x, label):
+    def run_batch(eeg, audio):
         optimizer.zero_grad()
-        pred = model(x)[:, 0, :]
-        loss = criterion(pred, label)
+        pred_encoding, encoding = model(eeg, audio)
+        loss = criterion(pred_encoding, encoding)
         loss.backward()
         optimizer.step()
         return loss.item()
@@ -79,20 +78,27 @@ def train(rank, model, train_dl, criterion, optimizer):
     model = DDP(model.to(rank), device_ids=[rank])
     master_process = rank == 0
 
-    for eeg, audio in (pbar := tqdm(train_dl, total=len(train_dl), disable=(not master_process))):
+    for i, (eeg, audio) in enumerate(pbar := tqdm(train_dl, total=len(train_dl), disable=(not master_process))):
         loss = run_batch(eeg.to(rank), audio.to(rank))
         pbar.set_description(f'Train Loss: {loss}')
+
+        ##############
+        if i == 2:
+            break
+        ##############
+    
+    print(f'[{rank}] FFN weight: {model.module.ffn.weight}')
     
 def validate(rank, model, criterion, val_dl):
-    def run_batch(x, label):
-        pred = model(x)[:, 0, :]
-        loss = criterion(pred, label)
+    def run_batch(eeg, audio):
+        pred_encoding, encoding = model(eeg, audio)
+        loss = criterion(pred_encoding, encoding)
         return loss
 
     model = DDP(model.to(rank), device_ids=[rank]).eval()
     master_process = rank == 0
 
-    for eeg, audio in (val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
+    for i, (eeg, audio) in enumerate(val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
         loss = run_batch(eeg.to(rank), audio.to(rank))
         if master_process:
             tensor_list = [loss.new_empty(()) for _ in range(2)]
@@ -100,12 +106,21 @@ def validate(rank, model, criterion, val_dl):
             val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
         else:
             dist.gather(loss)
+
+        ##############
+        if i == 2:
+            break
+        ##############
+
     model.train()
 
 def main(rank: int, world_size: int):
-    print('enter main')
     ddp_setup(rank, world_size)
     train_dl, val_dl, model = get_training_data()
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
+    validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
     destroy_process_group()
 
 
