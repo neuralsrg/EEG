@@ -1,4 +1,5 @@
 import os
+import warnings
 from tqdm import tqdm, trange
 
 import hydra
@@ -32,8 +33,8 @@ def ddp_setup(rank, world_size):
 
 # @hydra.main(version_base=None, config_path=".", config_name="config")
 # def get_training_data(cfg: DictConfig):
-def get_training_data():
-    cfg = OmegaConf.load("config.yaml")
+def get_training_data(cfg):
+    # cfg = OmegaConf.load("config.yaml")
     # data
     train_ds = instantiate(cfg.dataset)
     val_ds = instantiate(cfg.dataset).set_val_mode(True)
@@ -65,21 +66,24 @@ def get_training_data():
 
     return train_dl, val_dl, model
 
-def train(rank, model, train_dl, criterion, optimizer):
+def train(rank, model, train_dl, criterion, optimizer, step_every):
 
-    def run_batch(eeg, audio):
-        optimizer.zero_grad()
+    def run_batch(eeg, audio, step):
         pred_encoding, encoding = model(eeg, audio)
-        loss = criterion(pred_encoding, encoding)
+        loss = criterion(pred_encoding, encoding) / step_every
         loss.backward()
-        optimizer.step()
-        return loss.item()
+
+        if step % step_every == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+
+        return loss.item() * step_every
 
     model = DDP(model.to(rank), device_ids=[rank])
     master_process = rank == 0
 
     for i, (eeg, audio) in enumerate(pbar := tqdm(train_dl, total=len(train_dl), disable=(not master_process))):
-        loss = run_batch(eeg.to(rank), audio.to(rank))
+        loss = run_batch(eeg.to(rank), audio.to(rank), step=i+1)
         pbar.set_description(f'Train Loss: {loss}')
 
         ##############
@@ -116,11 +120,13 @@ def validate(rank, model, criterion, val_dl):
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
-    train_dl, val_dl, model = get_training_data()
+    cfg = OmegaConf.load("config.yaml")
+    train_dl, val_dl, model = get_training_data(cfg)
     print(f'train_dl: {len(train_dl)} batches, val_dl: {len(val_dl)} batches.')
     criterion = torch.nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-    train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer)
+    train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer,
+          step_every=cfg.training.step_every)
     validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
     destroy_process_group()
 
@@ -131,6 +137,7 @@ if __name__ == "__main__":
     # parser.add_argument('total_epochs', type=int, help='Total epochs to train the model')
     # args = parser.parse_args()
     
+    warnings.filterwarnings("ignore")
     world_size = torch.cuda.device_count()
     # mp.spawn(main, args=(world_size, args.save_every, args.total_epochs, args.batch_size), nprocs=world_size)
     mp.spawn(main, args=(world_size, ), nprocs=world_size)
