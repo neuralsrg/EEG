@@ -72,3 +72,55 @@ dataset:
   sound_size: 50176
   in_seq_len: 1145
   seed: 1337
+
+model:
+
+  # conv_downsampling
+  n_channels: 63
+  n_wvt_bins: 12
+
+  # ffn
+  d_model: 512
+
+  # conv module
+  kernel_size: 31
+  emb_dropout: 0.1
+  in_seq_len: ${dataset.in_seq_len}
+
+  # fft
+  n_fft: 2048
+  hop_size: 512
+
+  # transformer module
+  nhead: 8
+  num_encoder_layers: 6
+  num_decoder_layers: 6
+  dim_feedforward: 2048
+  dropout: 0.1
+  activation: relu
+  audio_sr: ${dataset.sample_rate}
+
+  # fft pca
+  audio_paths:
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Bu.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Fa.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Mu.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ga.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ba.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ra.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ma.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ru.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Gu.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Fu.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St2.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St5.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St4.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St3.wav
+  - /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St1.wav
+
+  # wavelet
+  eeg_sr: 1006
+  dj: 0.8
+
+training:
+  batch_size: 32
