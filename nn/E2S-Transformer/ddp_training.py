@@ -4,7 +4,7 @@ from tqdm import tqdm, trange
 import hydra
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, DictConfig
-os.environ['HYDRA_FULL_ERROR'] = "1"
+os.environ['HYDRA_FULL_ERROR'] = 1
 
 import torch
 import torch.nn.functional as F
@@ -31,9 +31,10 @@ def ddp_setup(rank, world_size):
     init_process_group(backend="nccl", rank=rank, world_size=world_size)
     torch.cuda.set_device(rank)
 
-@hydra.main(version_base=None, config_path=".", config_name="config")
-def get_training_data(cfg: DictConfig):
-    print('enter get data')
+# @hydra.main(version_base=None, config_path=".", config_name="config")
+# def get_training_data(cfg: DictConfig):
+def get_training_data():
+    cfg = OmegaConf.load("config.yaml")
     # data
     train_ds = instantiate(cfg.dataset)
     val_ds = instantiate(cfg.dataset).set_val_mode(True)
