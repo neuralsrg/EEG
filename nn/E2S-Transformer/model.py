@@ -5,6 +5,7 @@ import math
 from typing import Optional, List
 
 import torch
+import torchaudio
 import torch.nn as nn
 
 from wavelets_pytorch.transform import WaveletTransformTorch
