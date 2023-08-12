@@ -12,7 +12,26 @@ from torch.utils.data.distributed import DistributedSampler
 
 
 class EEGDataset(Dataset):
-    def __init__(self, config: dict):
+    path: str
+    audio_maps: dict
+    fragment_length: int
+    partition_size: int
+    sample_rate: int
+    sound_channel: int
+    val_ratio: float
+    seed: int
+
+    def __init__(
+        self,
+        path: str,
+        audio_maps: dict,
+        fragment_length: int,
+        partition_size: int,
+        sample_rate: int,
+        sound_channel: int,
+        val_ratio: float,
+        seed: int,
+    ) -> None:
         '''
         path: path to sections (folders)
         audio_maps: two-level map: section names -> labels -> audio_paths
@@ -20,40 +39,44 @@ class EEGDataset(Dataset):
         partition_size: number of nonzero labels in each csv file
         '''
         super().__init__()
-        rnd = random.Random(config['seed'])
+        self.path = path
+        self.audio_maps = audio_maps,
+        self.fragment_length = fragment_length,
+        self.partition_size = partition_size,
+        self.sample_rate = sample_rate,
+        self.sound_channel = sound_channel,
+        self.val_ratio = val_ratio,
+        self.seed = seed
+
+        rnd = random.Random(seed)
         
-        self.sections = os.listdir(config['path'])
+        self.sections = os.listdir(path)
         rnd.shuffle(self.sections)
-        assert set(self.sections) == set(config['audio_maps'].keys()), "Sections must be the same!"
-        self.audio_maps = config['audio_maps']
+        assert set(self.sections) == set(audio_maps.keys()), "Sections must be the same!"
+        self.audio_maps = audio_maps
         
         all_paths = []
         for sec in self.sections:
-            l = os.listdir(os.path.join(config['path'], sec))
+            l = os.listdir(os.path.join(path, sec))
             rnd.shuffle(l)
-            all_paths.append([os.path.join(config['path'], sec, file) for file in l])
+            all_paths.append([os.path.join(path, sec, file) for file in l])
                 
         # all_paths = [[os.path.join(path, sec, file) for file in sorted(os.listdir(os.path.join(path, sec)))] for sec in self.sections]
         num_all_files = [len(elem) for elem in all_paths]
-        splits = [int(elem * config['val_ratio']) for elem in num_all_files]
+        splits = [int(elem * val_ratio) for elem in num_all_files]
         
         self.val_paths = [sec_paths[:split] for sec_paths, split in zip(all_paths, splits)]
         self.paths = [sec_paths[split:] for sec_paths, split in zip(all_paths, splits)]
         
         self.sec_num_files = [len(elem) for elem in self.paths]
-        self.sec_cumnum = np.cumsum(self.sec_num_files) * config['partition_size']
+        self.sec_cumnum = np.cumsum(self.sec_num_files) * partition_size
         self.total_num_files = sum(self.sec_num_files)
         
         self.sec_num_val_files = [len(elem) for elem in self.val_paths]
-        self.sec_val_cumnum = np.cumsum(self.sec_num_val_files) * config['partition_size']
+        self.sec_val_cumnum = np.cumsum(self.sec_num_val_files) * partition_size
         self.total_num_val_files = sum(self.sec_num_val_files)
         
-        self.partition_size = config['partition_size']
-        self.fragment_length = config['fragment_length']
-        self.sr = config['audio_sr']
-        self.sound_channel = config['sound_channel']
         self.val_mode = False
-        self.config = config
         
     def __len__(self) -> int:
         num = self.total_num_val_files if self.val_mode else self.total_num_files
@@ -82,7 +105,7 @@ class EEGDataset(Dataset):
         '''
         section_name = self.sections[section]
         audio, current_sr = torchaudio.load(self.audio_maps[section_name][label])
-        audio = torchaudio.functional.resample(audio, orig_freq=current_sr, new_freq=self.sr)
+        audio = torchaudio.functional.resample(audio, orig_freq=current_sr, new_freq=self.sample_rate)
         return audio[self.sound_channel]
     
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:

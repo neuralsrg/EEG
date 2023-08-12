@@ -1,0 +1,72 @@
+dataset:
+  _target_: data.EEGDataset
+  path: /kaggle/input/internal-speech-recognition/Vartanov/feather
+  audio_maps:
+    syllables:
+      1: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ba.wav
+      11: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ba.wav
+      2: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Fa.wav
+      12: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Fa.wav
+      3: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ga.wav
+      13: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ga.wav
+      4: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ma.wav
+      14: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ma.wav
+      5: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ra.wav
+      15: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ra.wav
+      6: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Bu.wav
+      16: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Bu.wav
+      7: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ru.wav
+      17: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Ru.wav
+      8: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Mu.wav
+      18: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Mu.wav
+      9: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Fu.wav
+      19: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Fu.wav
+      10: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Gu.wav
+      20: /kaggle/input/internal-speech-recognition/Vartanov/audios/syllables/Gu.wav
+    phonemes_m3:
+      12: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/A.wav
+      22: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/A.wav
+      13: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/B.wav
+      23: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/B.wav
+      14: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/F.wav
+      24: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/F.wav
+      15: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/G.wav
+      25: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/G.wav
+      16: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/M.wav
+      26: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/M.wav
+      17: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/R.wav
+      27: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/R.wav
+      18: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/U.wav
+      28: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/U.wav
+    phonemes_m4:
+      1: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/A.wav
+      11: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/A.wav
+      2: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/B.wav
+      12: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/B.wav
+      3: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/F.wav
+      13: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/F.wav
+      4: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/G.wav
+      14: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/G.wav
+      5: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/M.wav
+      15: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/M.wav
+      6: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/R.wav
+      16: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/R.wav
+      7: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/U.wav
+      17: /kaggle/input/internal-speech-recognition/Vartanov/audios/phonemes/U.wav
+    words:
+      11: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St1.wav
+      21: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St1.wav
+      12: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St2.wav
+      22: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St2.wav
+      13: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St3.wav
+      23: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St3.wav
+      14: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St4.wav
+      24: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St4.wav
+      15: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St5.wav
+      25: /kaggle/input/internal-speech-recognition/Vartanov/audios/words/St5.wav
+  fragment_length: 2012
+  partition_size: 32
+  sample_rate: 44100
+  sound_channel: 1
+  val_ratio: 0.15
+  seed: 1337

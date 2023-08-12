@@ -1,3 +1,9 @@
+import os
+from tqdm import tqdm, trange
+
+import hydra
+from omegaconf import DictConfig
+
 import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
@@ -7,12 +13,9 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
-import os
 
 from data import ToyDataset, get_dl
 from model import get_model
-
-from tqdm import tqdm, trange
 
 
 def ddp_setup(rank, world_size):
