@@ -83,7 +83,7 @@ def train(rank, model, train_dl, criterion, optimizer):
         pbar.set_description(f'Train Loss: {loss}')
 
         ##############
-        if i == 2:
+        if i == 20:
             break
         ##############
     
@@ -108,7 +108,7 @@ def validate(rank, model, criterion, val_dl):
             dist.gather(loss)
 
         ##############
-        if i == 2:
+        if i == 20:
             break
         ##############
 
