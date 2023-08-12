@@ -30,7 +30,7 @@ def train(rank, model, train_dl, criterion, optimizer):
 
     def run_batch(x, label):
         optimizer.zero_grad()
-        pred = model(x)[:, 0, :]
+        pred = model(x)
         loss = criterion(pred, label)
         loss.backward()
         optimizer.step()
@@ -39,21 +39,21 @@ def train(rank, model, train_dl, criterion, optimizer):
     model = DDP(model.to(rank), device_ids=[rank])
     master_process = rank == 0
 
-    for eeg, audio in (pbar := tqdm(train_dl, total=len(train_dl), disable=(not master_process))):
-        loss = run_batch(eeg.to(rank), audio.to(rank))
+    for x, label in (pbar := tqdm(train_dl, total=len(train_dl), disable=(not master_process))):
+        loss = run_batch(x.to(rank), label.to(rank))
         pbar.set_description(f'Train Loss: {loss}')
     
 def validate(rank, model, criterion, val_dl):
     def run_batch(x, label):
-        pred = model(x)[:, 0, :]
+        pred = model(x)
         loss = criterion(pred, label)
         return loss
 
     model = DDP(model.to(rank), device_ids=[rank]).eval()
     master_process = rank == 0
 
-    for eeg, audio in (val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
-        loss = run_batch(eeg.to(rank), audio.to(rank))
+    for x, label in (val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
+        loss = run_batch(x.to(rank), label.to(rank))
         if master_process:
             tensor_list = [loss.new_empty(()) for _ in range(2)]
             dist.gather(loss, tensor_list)
