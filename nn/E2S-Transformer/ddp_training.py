@@ -32,6 +32,7 @@ def ddp_setup(rank, world_size):
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
 def get_training_data(cfg: DictConfig):
+    print('enter get data')
     # data
     train_ds = instantiate(cfg.dataset)
     val_ds = instantiate(cfg.dataset).set_val_mode(True)
@@ -100,6 +101,7 @@ def validate(rank, model, criterion, val_dl):
     model.train()
 
 def main(rank: int, world_size: int):
+    print('enter main')
     ddp_setup(rank, world_size)
     train_dl, val_dl, model = get_training_data()
     destroy_process_group()
