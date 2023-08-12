@@ -7,6 +7,8 @@ def main(cfg: DictConfig) -> None:
     dataset = instantiate(cfg.dataset)
 
     print(dataset[0])
+    print('='*20)
+    print(cfg.dataset.audio_maps['syllables'][int(11)])
 
 if __name__ == '__main__':
     main()

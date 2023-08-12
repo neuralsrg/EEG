@@ -105,7 +105,7 @@ class EEGDataset(Dataset):
         '''
         section_name = self.sections[section]
         print(list(self.audio_maps[section_name].keys()))
-        audio, current_sr = torchaudio.load(self.audio_maps[section_name][str(label)])
+        audio, current_sr = torchaudio.load(self.audio_maps[section_name][int(label)])
         audio = torchaudio.functional.resample(audio, orig_freq=current_sr, new_freq=self.sample_rate)
         return audio[self.sound_channel]
     
