@@ -95,9 +95,10 @@ class PositionalEncoding(nn.Module):
 class E2STransformer(nn.Module):
     
     def __init__(self, n_channels: int, n_wvt_bins: int, d_model: int,
-                 kernel_size: int, emb_dropout: float, in_seq_len: int,
-                 n_fft: int, hop_size: int, nhead: int, num_encoder_layers: int,
-                 num_decoder_layers: int, dim_feedforward: int, dropout: float,
+                 kernel_size: int, conv_module_dropout: int, emb_dropout: float,
+                 in_seq_len: int, n_fft: int, hop_size: int, nhead: int,
+                 num_encoder_layers: int, num_decoder_layers: int,
+                 dim_feedforward: int, dropout: float,
                  activation: str, audio_sr: int, audio_paths: List[str],
                  eeg_sr: int, dj: float, example_input: torch.tensor):
         """
@@ -110,7 +111,8 @@ class E2STransformer(nn.Module):
         self.conv_downsampling = torch.nn.Conv1d(n_channels, 1, kernel_size=1) # (N, c_in, L) -> (N, 1, L)
         self.ln = nn.LayerNorm(n_wvt_bins)
         self.ffn = nn.Linear(n_wvt_bins, d_model)
-        self.conv_module = ConvolutionModule(d_model=d_model, kernel_size=kernel_size)
+        self.conv_module = ConvolutionModule(d_model=d_model, kernel_size=kernel_size,
+                                             conv_module_dropout=conv_module_dropout)
         self.positional_encoding = PositionalEncoding(d_model=d_model, emb_dropout=emb_dropout,
                                                       in_seq_len=in_seq_len)
         self.n_fft = n_fft

@@ -84,6 +84,9 @@ model:
 
   # conv module
   kernel_size: 31
+  conv_module_dropout: 0.1
+
+  # positional encoding
   emb_dropout: 0.1
   in_seq_len: ${dataset.in_seq_len}
 
