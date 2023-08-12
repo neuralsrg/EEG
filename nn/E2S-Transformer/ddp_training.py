@@ -4,6 +4,7 @@ from tqdm import tqdm, trange
 import hydra
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, DictConfig
+os.environ['HYDRA_FULL_ERROR'] = "1"
 
 import torch
 import torch.nn.functional as F
