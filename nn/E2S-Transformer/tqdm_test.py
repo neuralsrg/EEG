@@ -1,4 +1,4 @@
-from tqdm.auto import tqdm, trange
+from tqdm import tqdm, trange
 import time
 
 for i1 in tqdm(range(100)):
