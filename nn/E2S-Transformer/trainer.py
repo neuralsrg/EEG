@@ -70,9 +70,13 @@ class Trainer:
         self.train_dl.sampler.set_epoch(epoch)
         total_batches = len(self.train_dl)
 
+        print(f'disable={(not self.master_process)}')
+        if (not self.master_process):
+            print(f'Must be disabled for [{self.gpu_id}]')
         for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
             loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
-            pbar.set_description(f'Train Loss: {loss}')
+            if self.master_process:
+                pbar.set_description(f'Train Loss: {loss}')
 
             if self.master_process:
                 self.hist.append((loss, 'train'))
