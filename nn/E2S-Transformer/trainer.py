@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import numpy as np
 from tqdm import tqdm, trange
@@ -135,7 +136,10 @@ class Trainer:
             os.makedirs(self.model_checkpoint_path)
         PATH = os.path.join(self.model_checkpoint_path, name)
         torch.save(ckp, PATH)
-        # print(f'Best validation loss achieved: {self.best_val_loss:.3f}. Model checkpoint saved as {PATH}.')
+
+        save_stdout = sys.stdout
+        tqdm.write(f'Best validation loss achieved: {self.best_val_loss:.3f}. Model checkpoint saved as {PATH}.')
+        sys.stdout = save_stdout
     
     def _save_final_state(self):
         PATH = os.path.join(self.model_checkpoint_path, 'final_state')
