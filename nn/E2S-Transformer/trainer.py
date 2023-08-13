@@ -67,11 +67,11 @@ class Trainer:
 
             return loss.item() * self.step_every
 
-        for epoch in trange(self.n_epochs, disable=(not self.master_process)):
+        for epoch in trange(self.n_epochs, disable=(not self.master_process), position=0, leave=True):
         # for epoch in range(self.n_epochs):
             total_batches = len(self.train_dl)
 
-            for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
+            for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process), position=0, leave=True)):
                 loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
                 pbar.set_description(f'Train Loss: {loss}')
 
