@@ -55,36 +55,6 @@ class Trainer:
         self.best_val_loss = float('inf')
         self.hist = []
 
-    def _run_epoch(self, epoch):
-        def run_batch(eeg, audio, step):
-            pred_encoding, encoding = self.model(eeg, audio)
-            loss = self.criterion(pred_encoding, encoding) / self.step_every
-            loss.backward()
-
-            if step % self.step_every == 0:
-                self.optimizer.step()
-                self.optimizer.zero_grad()
-
-            return loss.item() * self.step_every
-
-        self.train_dl.sampler.set_epoch(epoch)
-        total_batches = len(self.train_dl)
-
-        for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
-            loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
-            pbar.set_description(f'Train Loss: {loss}')
-
-            if self.master_process:
-                self.hist.append((loss, 'train'))
-
-            if (i+1 == total_batches//2) or (i+1 == total_batches):
-                self.validate()
-
-            ##############
-            if i == 5:
-                break
-            ##############
-
     def train(self):
         def run_batch(eeg, audio, step):
             pred_encoding, encoding = self.model(eeg, audio)
@@ -109,6 +79,15 @@ class Trainer:
                 if i == 2:
                     break
                 ##############
+                if self.master_process:
+                    self.hist.append((loss, 'train'))
+
+                # if (i+1 == total_batches//2) or (i+1 == total_batches):
+                #if i == 1:
+                #    self.validate()
+
+            if self.master_process:
+                print(f'Epoch {epoch} finished with the best validation loss {self.best_val_loss:.3f}.')
         if self.master_process:
             self._save_final_state()
 

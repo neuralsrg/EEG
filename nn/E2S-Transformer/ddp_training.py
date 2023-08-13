@@ -145,7 +145,7 @@ def main(rank: int, world_size: int):
     )
     trainer.train()
     ###############
-    trainer.validate()
+    # trainer.validate()
     ###############
     destroy_process_group()
 
