@@ -86,10 +86,6 @@ class Trainer:
             ##############
 
     def train(self):
-        #for epoch in trange(self.n_epochs, disable=(not self.master_process)):
-        #    self._run_epoch(epoch)
-        #if self.master_process:
-        #    self._save_final_state()
         def run_batch(eeg, audio, step):
             pred_encoding, encoding = self.model(eeg, audio)
             loss = self.criterion(pred_encoding, encoding) / self.step_every
@@ -101,16 +97,19 @@ class Trainer:
 
             return loss.item() * self.step_every
 
-        total_batches = len(self.train_dl)
+        for epoch in trange(self.n_epochs, disable=(not self.master_process)):
+            total_batches = len(self.train_dl)
 
-        for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
-            loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
-            pbar.set_description(f'Train Loss: {loss}')
+            for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
+                loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
+                pbar.set_description(f'Train Loss: {loss}')
 
-            ##############
-            if i == 5:
-                break
-            ##############
+                ##############
+                if i == 2:
+                    break
+                ##############
+        if self.master_process:
+            self._save_final_state()
 
     def validate(self):
         def run_batch(eeg, audio):
@@ -139,7 +138,7 @@ class Trainer:
                     dist.gather(loss)
 
                 ##############
-                if i == 20:
+                if i == 2:
                     break
                 ##############
         
@@ -153,6 +152,8 @@ class Trainer:
     def _save_checkpoint(self, name: str):
         ckp = self.model.module.state_dict()
         PATH = os.path.join(self.model_checkpoint_path, name)
+        if not os.path.exists(PATH):
+            os.makedirs(PATH)
         torch.save(ckp, PATH)
         print(f'Model checkpoint saved as {PATH}')
     
