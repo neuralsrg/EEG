@@ -126,5 +126,11 @@ model:
   dj: 0.8
 
 training:
+  continue_training: False
+  n_epochs: 2
   batch_size: 10
   step_every: 4
+  model_checkpoint_path: /kaggle/working/checkpoints
+  load_from: /kaggle/working/load_from
+  base_lr: 0.2
+  min_lr: 0.00001

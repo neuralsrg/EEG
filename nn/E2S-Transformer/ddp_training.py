@@ -18,7 +18,8 @@ import torch.distributed as dist
 from torch.distributed import init_process_group, destroy_process_group
 
 from data import get_dl
-from model import E2STransformer
+from model import E2STransformer, NoamAnnealing
+from trainer import Trainer
 
 
 def ddp_setup(rank, world_size):
@@ -64,8 +65,13 @@ def get_training_data(cfg):
         dj=cfg.model.dj,
         example_input=train_ds[0][0]
     )
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.training.base_lr)
+    scheduler=NoamAnnealing(optimizer=optimizer, d_model=cfg.model.d_model, warmup_steps=len(train_dl) // 5,
+                            min_lr=cfg.training.min_lr)
+    scaler=torch.cuda.amp.GradScaler()
+    criterion = torch.nn.MSELoss()
 
-    return train_dl, val_dl, model
+    return train_dl, val_dl, model, optimizer, scheduler, scaler, criterion
 
 def train(rank, model, train_dl, criterion, optimizer, step_every):
 
@@ -101,31 +107,46 @@ def validate(rank, model, criterion, val_dl):
     model = DDP(model.to(rank), device_ids=[rank]).eval()
     master_process = rank == 0
 
-    for i, (eeg, audio) in enumerate(val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
-        loss = run_batch(eeg.to(rank), audio.to(rank))
-        if master_process:
-            tensor_list = [loss.new_empty(()) for _ in range(2)]
-            dist.gather(loss, tensor_list)
-            val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
-        else:
-            dist.gather(loss)
+    with torch.no_grad():
+        for i, (eeg, audio) in enumerate(val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
+            loss = run_batch(eeg.to(rank), audio.to(rank))
+            if master_process:
+                tensor_list = [loss.new_empty(()) for _ in range(2)]
+                dist.gather(loss, tensor_list)
+                val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
+            else:
+                dist.gather(loss)
 
-        ##############
-        if i == 20:
-            break
-        ##############
+            ##############
+            if i == 20:
+                break
+            ##############
 
     model.train()
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
     cfg = OmegaConf.load("config.yaml")
-    train_dl, val_dl, model = get_training_data(cfg)
-    criterion = torch.nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
-    train(rank=rank, model=model, train_dl=train_dl, criterion=criterion, optimizer=optimizer,
-          step_every=cfg.training.step_every)
-    validate(rank=rank, model=model, criterion=criterion, val_dl=val_dl)
+    train_dl, val_dl, model, optimizer, scheduler, scaler, criterion = get_training_data(cfg)
+    trainer = Trainer(
+        gpu_id=rank,
+        train_dl=train_dl,
+        val_dl=val_dl,
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        scaler=scaler,
+        criterion=criterion,
+        n_epochs=cfg.training.n_epochs,
+        batch_size=cfg.training.batch_size,
+        step_every=cfg.training.step_every,
+        model_checkpoint_path=cfg.training.model_ckeckpoint_path,
+        load_from=cfg.training.load_from
+    )
+    trainer.train()
+    ###############
+    trainer.validate()
+    ###############
     destroy_process_group()
 
 

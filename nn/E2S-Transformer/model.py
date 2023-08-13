@@ -2,6 +2,7 @@ import sys
 sys.path.append('/kaggle/working/PyTorchWavelets/')
 
 import math
+import warnings
 from typing import Optional, List
 
 import torch
@@ -13,6 +14,58 @@ from wavelets_pytorch.wavelets import Morlet
 
 from sklearn.decomposition import PCA
 
+
+class NoamAnnealing(torch.optim.lr_scheduler._LRScheduler):
+    def __init__(
+        self, optimizer: torch.optim.Optimizer, *, 
+        d_model: int, warmup_steps: int, min_lr: float = 0.0, last_epoch: int = -1
+    ):
+        """
+        :param torch.optim.Optimizer optimizer:
+        :param int d_model: Model input dimension
+        :param int warmup_steps:
+        :param float min_lr: Lower bound for learning rate after warmup
+        :param int last_epoch:
+        """
+        assert warmup_steps
+        
+        # It is necessary to assign all attributes *before* __init__,
+        # as class is wrapped by an inner class.
+        self.min_lr = min_lr
+        self.warmup_steps = warmup_steps
+        self.normalization = d_model ** (-0.5)
+
+        super().__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        if not self._get_lr_called_within_step:
+            warnings.warn(
+                "To get the last learning rate computed by the scheduler, please use `get_last_lr()`.", UserWarning
+            )
+
+        step = max(1, self.last_epoch)
+        new_lrs = [
+            self._noam_annealing(initial_lr=initial_lr, step=step) 
+            for initial_lr in self.base_lrs
+        ]
+        return new_lrs
+
+    def _noam_annealing(self, initial_lr: float, step: int) -> float:
+        """Compute noam annealing learning rate 
+            as described in https://arxiv.org/abs/1706.03762 Section 5.3.
+            After warmup_steps learning rate should be always greater than min_lr
+
+        :param float initial_lr: Additional multiplicative factor for learning rate
+        :param int step: Current optimization step
+        :return: Learning rate at given step
+        :rtype: float
+        """
+        lrate = self.normalization * min(step ** (-0.5), step * self.warmup_steps ** (-1.5)) * initial_lr
+        if step > self.warmup_steps:
+            lrate = max(self.min_lr, lrate)
+        
+        return lrate
+    
 
 class ConvolutionModule(torch.nn.Module):
     d_model: int
