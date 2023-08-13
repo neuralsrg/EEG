@@ -70,13 +70,9 @@ class Trainer:
         self.train_dl.sampler.set_epoch(epoch)
         total_batches = len(self.train_dl)
 
-        print(f'disable={(not self.master_process)}')
-        if (not self.master_process):
-            print(f'Must be disabled for [{self.gpu_id}]')
         for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
             loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
-            if self.master_process:
-                pbar.set_description(f'Train Loss: {loss}')
+            pbar.set_description(f'Train Loss: {loss}')
 
             if self.master_process:
                 self.hist.append((loss, 'train'))
@@ -90,10 +86,31 @@ class Trainer:
             ##############
 
     def train(self):
-        for epoch in trange(self.n_epochs, disable=(not self.master_process)):
-            self._run_epoch(epoch)
-        if self.master_process:
-            self._save_final_state()
+        #for epoch in trange(self.n_epochs, disable=(not self.master_process)):
+        #    self._run_epoch(epoch)
+        #if self.master_process:
+        #    self._save_final_state()
+        def run_batch(eeg, audio, step):
+            pred_encoding, encoding = self.model(eeg, audio)
+            loss = self.criterion(pred_encoding, encoding) / self.step_every
+            loss.backward()
+
+            if step % self.step_every == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+            return loss.item() * self.step_every
+
+        total_batches = len(self.train_dl)
+
+        for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
+            loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
+            pbar.set_description(f'Train Loss: {loss}')
+
+            ##############
+            if i == 5:
+                break
+            ##############
 
     def validate(self):
         def run_batch(eeg, audio):
@@ -142,7 +159,7 @@ class Trainer:
     def _save_final_state(self):
         PATH = os.path.join(self.model_checkpoint_path, 'final_state')
         if not os.path.exists(PATH):
-            os.mkdir(PATH)
+            os.makedirs(PATH)
         names = ['model', 'optimizer', 'scheduler', 'scaler']
         entities = [self.model.module, self.optimizer, self.scheduler, self.scaler]
 
