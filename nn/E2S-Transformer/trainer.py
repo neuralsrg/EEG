@@ -97,7 +97,8 @@ class Trainer:
 
             return loss.item() * self.step_every
 
-        for epoch in trange(self.n_epochs, disable=(not self.master_process)):
+        # for epoch in trange(self.n_epochs, disable=(not self.master_process)):
+        for epoch in range(self.n_epochs):
             total_batches = len(self.train_dl)
 
             for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
@@ -145,11 +146,12 @@ class Trainer:
         if self.master_process:
             if np.mean(losses) < self.best_val_loss:
                 self.best_val_loss = np.mean(losses)
-                self._save_checkpoint(f'{self.best_val_loss:.3f}.pt')
+                self._save_checkpoint(f'{self.best_val_loss:.3f}')
 
         self.model.train()
 
     def _save_checkpoint(self, name: str):
+        name = name.replace('.', '_') + '.pt'
         ckp = self.model.module.state_dict()
         PATH = os.path.join(self.model_checkpoint_path, name)
         if not os.path.exists(PATH):
