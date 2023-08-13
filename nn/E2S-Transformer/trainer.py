@@ -74,7 +74,7 @@ class Trainer:
 
             for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process), position=0, leave=True)):
                 loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
-                pbar.set_description(f'Training | Train Loss: {loss:.3f} | Best val loss: {self.best_val_loss:.3f} | Current val loss: {self.cur_val_loss:.3f}')
+                pbar.set_description(f'T|loss:{loss:.2f}|best val:{self.best_val_loss:.2f}|cur val:{self.cur_val_loss:.2f}')
 
                 ##############
                 if i == 5:
@@ -111,7 +111,7 @@ class Trainer:
                     mean_val_loss = torch.tensor(tensor_list).mean().item()
                     losses.append(mean_val_loss)
                     self.hist.append((mean_val_loss, 'val'))
-                    pbar.set_description(f'Validating | Train Loss: {train_loss:.3f} | Best val loss: {self.best_val_loss:.3f} | Current val loss: {mean_val_loss:.3f}')
+                    pbar.set_description(f'Val|loss:{train_loss:.2f}|best val:{self.best_val_loss:.2f}|cur val:{mean_val_loss:.2f}')
                 else:
                     dist.gather(loss)
 
