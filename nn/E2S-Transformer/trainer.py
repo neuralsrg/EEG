@@ -79,14 +79,14 @@ class Trainer:
                 pbar.set_description(f'Training | Train loss: {loss:.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
 
                 ##############
-                if i == 5:
+                if i == 20:
                     break
                 ##############
                 if self.master_process:
                     self.hist.append((loss, 'train'))
 
                 # if (i+1 == total_batches//2) or (i+1 == total_batches):
-                if i == 1:
+                if (i+1) % 10 == 0:
                     self.validate(pbar, loss)  # if tqdm OK?
 
             if self.master_process:
@@ -118,7 +118,7 @@ class Trainer:
                     dist.gather(loss)
 
                 ##############
-                if i == 5:
+                if i == 20:
                     break
                 ##############
         
