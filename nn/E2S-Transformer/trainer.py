@@ -113,7 +113,7 @@ class Trainer:
                     mean_val_loss = torch.tensor(tensor_list).mean().item()
                     losses.append(mean_val_loss)
                     self.hist.append((mean_val_loss, 'val'))
-                    pbar.set_description(f'Val|loss:{train_loss:.2f}|best val:{self.best_val_loss:.2f}|cur val:{mean_val_loss:.2f}')
+                    pbar.set_description(f'V|loss:{train_loss:.2f}|best val:{self.best_val_loss:.2f}|cur val:{mean_val_loss:.2f}')
                 else:
                     dist.gather(loss)
 
