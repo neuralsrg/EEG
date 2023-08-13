@@ -59,15 +59,29 @@ class Trainer:
 
     def train(self):
         def run_batch(eeg, audio, step):
-            pred_encoding, encoding = self.model(eeg, audio)
-            loss = self.criterion(pred_encoding, encoding) / self.step_every
-            loss.backward()
+            with torch.autocast(device_type='cuda', dtype=torch.float16):
+                pred_encoding, encoding = self.model(eeg, audio)
+                loss = self.criterion(pred_encoding, encoding) / self.step_every
+
+            prev_scale_value = self.scaler.get_scale()
+                
+            self.scaler.scale(loss).backward()
+            self.scaler.unscale_(self.optimizer)
+
+            grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0).item()
 
             if step % self.step_every == 0:
-                self.optimizer.step()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+                scale_value = self.scaler.get_scale()
                 self.optimizer.zero_grad()
 
-            return loss.item() * self.step_every
+                if prev_scale_value == scale_value:
+                    self.scheduler.step()
+            
+            current_lr = self.scheduler.get_last_lr()[-1]
+
+            return loss.item() * self.step_every, grad_norm, current_lr
 
         # for epoch in trange(self.n_epochs, disable=(not self.master_process)):
         for epoch in range(self.n_epochs):
@@ -75,8 +89,8 @@ class Trainer:
 
             for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process),
                                                           position=0, leave=True, bar_format="{desc:<80}{percentage:3.0f}%{r_bar}")):
-                loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
-                pbar.set_description(f'Training | Train loss: {loss:.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
+                loss, grad_norm, lr = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
+                pbar.set_description(f'Training | GradNorm: {grad_norm:.2f} | LR: {lr:.2e} | Train loss: {loss:.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
 
                 ##############
                 if i == 20:
@@ -90,7 +104,7 @@ class Trainer:
                     self.validate(pbar, loss)  # if tqdm OK?
 
             if self.master_process:
-                print(f'\nEpoch {epoch} finished with the best validation loss {self.best_val_loss:.3f}.\n')
+                print(f'\nEpoch {epoch+1} finished with the best validation loss {self.best_val_loss:.3f}.\n')
         if self.master_process:
             self._save_final_state()
 
