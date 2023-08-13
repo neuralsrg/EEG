@@ -79,7 +79,7 @@ class Trainer:
             
             current_lr = self.scheduler.get_last_lr()[-1]
 
-            return loss.item() * self.step_every, grad_norm, current_lr
+            return loss.item() * self.step_every, current_lr
 
         # for epoch in trange(self.n_epochs, disable=(not self.master_process)):
         for epoch in range(self.n_epochs):
@@ -87,8 +87,8 @@ class Trainer:
 
             for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process),
                                                           position=0, leave=True, bar_format="{desc:<80}{percentage:3.0f}%{r_bar}")):
-                loss, grad_norm, lr = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
-                pbar.set_description(f'Training | GradNorm: {grad_norm:.2f} | LR: {lr:.2e} | Train loss: {loss:.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
+                loss, lr = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
+                pbar.set_description(f'Training | LR: {lr:.2e} | Train loss: {loss:.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
 
                 ##############
                 if i == 20:
