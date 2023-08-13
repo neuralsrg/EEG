@@ -1,7 +1,7 @@
 import os
 import pickle
 import numpy as np
-from tqdm.notebook import tqdm, trange
+from tqdm import tqdm, trange
 
 import torch
 import torch.nn as nn
