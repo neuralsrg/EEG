@@ -59,24 +59,14 @@ class Trainer:
 
     def train(self):
         def run_batch(eeg, audio, step):
-            # with torch.autocast(device_type='cuda', dtype=torch.float16):
-            with torch.cuda.amp.autocast():
-                pred_encoding, encoding = self.model(eeg, audio)
-                loss = self.criterion(pred_encoding, encoding) / self.step_every
-
-            prev_scale_value = self.scaler.get_scale()
-            self.scaler.scale(loss).backward()
-            # grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0).item()
+            pred_encoding, encoding = self.model(eeg, audio)
+            loss = self.criterion(pred_encoding, encoding) / self.step_every
+            loss.backward()
 
             if step % self.step_every == 0:
-                # self.scaler.unscale_(self.optimizer)
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-                scale_value = self.scaler.get_scale()
+                self.optimizer.step()
                 self.optimizer.zero_grad()
-
-                if prev_scale_value == scale_value:
-                    self.scheduler.step()
+                self.scheduler.step()
             
             current_lr = self.scheduler.get_last_lr()[-1]
 
