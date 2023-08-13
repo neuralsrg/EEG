@@ -81,12 +81,12 @@ class Trainer:
                 self.validate()
 
             ##############
-            if i == 20:
+            if i == 5:
                 break
             ##############
 
     def train(self):
-        for epoch in trange(self.n_epochs):
+        for epoch in trange(self.n_epochs, disable=(not self.master_process)):
             self._run_epoch(epoch)
         if self.master_process:
             self._save_final_state()
@@ -137,6 +137,8 @@ class Trainer:
     
     def _save_final_state(self):
         PATH = os.path.join(self.model_checkpoint_path, 'final_state')
+        if not os.path.exists(PATH):
+            os.mkdir(PATH)
         names = ['model', 'optimizer', 'scheduler', 'scaler']
         entities = [self.model.module, self.optimizer, self.scheduler, self.scaler]
 
