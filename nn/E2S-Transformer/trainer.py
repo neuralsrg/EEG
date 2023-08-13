@@ -64,13 +64,11 @@ class Trainer:
                 loss = self.criterion(pred_encoding, encoding) / self.step_every
 
             prev_scale_value = self.scaler.get_scale()
-                
             self.scaler.scale(loss).backward()
-            self.scaler.unscale_(self.optimizer)
-
             grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0).item()
 
             if step % self.step_every == 0:
+                self.scaler.unscale_(self.optimizer)
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 scale_value = self.scaler.get_scale()
