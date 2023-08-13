@@ -67,7 +67,7 @@ class Trainer:
 
             return loss.item() * self.step_every
 
-        for epoch in trange(self.n_epochs, disable=(not self.master_process), position=0, leave=True):
+        for epoch in trange(self.n_epochs, disable=(not self.master_process)):
         # for epoch in range(self.n_epochs):
             total_batches = len(self.train_dl)
 
