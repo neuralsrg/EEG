@@ -41,7 +41,7 @@ class Trainer:
         self.scheduler = scheduler
         self.scaler = scaler
 
-        if os.path.exists(self.load_from):
+        if os.path.exists(load_from):
             self._load_state(load_from)
         self.criterion = criterion
 
