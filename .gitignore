@@ -9,3 +9,6 @@ runs
 .csv
 .h5
 data
+send.sh
+outputs
+test.py
