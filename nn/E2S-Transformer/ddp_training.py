@@ -140,7 +140,7 @@ def main(rank: int, world_size: int):
         n_epochs=cfg.training.n_epochs,
         batch_size=cfg.training.batch_size,
         step_every=cfg.training.step_every,
-        model_checkpoint_path=cfg.training.model_ckeckpoint_path,
+        model_checkpoint_path=cfg.training.model_checkpoint_path,
         load_from=cfg.training.load_from
     )
     trainer.train()

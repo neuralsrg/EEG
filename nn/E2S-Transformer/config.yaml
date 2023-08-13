@@ -126,7 +126,6 @@ model:
   dj: 0.8
 
 training:
-  continue_training: False
   n_epochs: 2
   batch_size: 10
   step_every: 4
