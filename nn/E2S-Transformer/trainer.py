@@ -1,7 +1,7 @@
 import os
 import pickle
 import numpy as np
-from tqdm import tqdm, trange
+from tqdm.notebook import tqdm, trange
 
 import torch
 import torch.nn as nn
@@ -131,9 +131,9 @@ class Trainer:
 
     def _save_checkpoint(self, name: str):
         ckp = self.model.module.state_dict()
+        if not os.path.exists(self.model_checkpoint_path):
+            os.makedirs(self.model_checkpoint_path)
         PATH = os.path.join(self.model_checkpoint_path, name)
-        if not os.path.exists(PATH):
-            os.makedirs(PATH)
         torch.save(ckp, PATH)
         print(f'Best validation loss achieved: {self.best_val_loss:.3f}. Model checkpoint saved as {PATH}')
     
