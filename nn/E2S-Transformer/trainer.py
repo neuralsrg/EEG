@@ -67,8 +67,8 @@ class Trainer:
 
             return loss.item() * self.step_every
 
-        # for epoch in trange(self.n_epochs, disable=(not self.master_process)):
-        for epoch in range(self.n_epochs):
+        for epoch in trange(self.n_epochs, disable=(not self.master_process)):
+        # for epoch in range(self.n_epochs):
             total_batches = len(self.train_dl)
 
             for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process))):
@@ -76,15 +76,15 @@ class Trainer:
                 pbar.set_description(f'Train Loss: {loss}')
 
                 ##############
-                if i == 2:
+                if i == 5:
                     break
                 ##############
                 if self.master_process:
                     self.hist.append((loss, 'train'))
 
                 # if (i+1 == total_batches//2) or (i+1 == total_batches):
-                if i == 1:
-                    self.validate()  # if tqdm OK?
+                # if i == 1:
+                #     self.validate()  # if tqdm OK?
 
             if self.master_process:
                 print(f'\nEpoch {epoch} finished with the best validation loss {self.best_val_loss:.3f}.\n')
