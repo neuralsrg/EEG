@@ -59,7 +59,8 @@ class Trainer:
 
     def train(self):
         def run_batch(eeg, audio, step):
-            with torch.autocast(device_type='cuda', dtype=torch.float16):
+            # with torch.autocast(device_type='cuda', dtype=torch.float16):
+            with torch.cuda.amp.autocast():
                 pred_encoding, encoding = self.model(eeg, audio)
                 loss = self.criterion(pred_encoding, encoding) / self.step_every
 
