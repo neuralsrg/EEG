@@ -65,10 +65,10 @@ class Trainer:
 
             prev_scale_value = self.scaler.get_scale()
             self.scaler.scale(loss).backward()
-            grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0).item()
+            # grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0).item()
 
             if step % self.step_every == 0:
-                self.scaler.unscale_(self.optimizer)
+                # self.scaler.unscale_(self.optimizer)
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
                 scale_value = self.scaler.get_scale()
