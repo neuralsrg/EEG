@@ -83,11 +83,11 @@ class Trainer:
                     self.hist.append((loss, 'train'))
 
                 # if (i+1 == total_batches//2) or (i+1 == total_batches):
-                #if i == 1:
-                #    self.validate()
+                if i == 1:
+                    self.validate()  # if tqdm OK?
 
             if self.master_process:
-                print(f'Epoch {epoch} finished with the best validation loss {self.best_val_loss:.3f}.')
+                print(f'\nEpoch {epoch} finished with the best validation loss {self.best_val_loss:.3f}.\n')
         if self.master_process:
             self._save_final_state()
 
@@ -118,25 +118,24 @@ class Trainer:
                     dist.gather(loss)
 
                 ##############
-                if i == 2:
+                if i == 5:
                     break
                 ##############
         
         if self.master_process:
             if np.mean(losses) < self.best_val_loss:
                 self.best_val_loss = np.mean(losses)
-                self._save_checkpoint(f'{self.best_val_loss:.3f}')
+                self._save_checkpoint('best_model.pt')
 
         self.model.train()
 
     def _save_checkpoint(self, name: str):
-        name = name.replace('.', '_') + '.pt'
         ckp = self.model.module.state_dict()
         PATH = os.path.join(self.model_checkpoint_path, name)
         if not os.path.exists(PATH):
             os.makedirs(PATH)
         torch.save(ckp, PATH)
-        print(f'Model checkpoint saved as {PATH}')
+        print(f'Best validation loss achieved: {self.best_val_loss:.3f}. Model checkpoint saved as {PATH}')
     
     def _save_final_state(self):
         PATH = os.path.join(self.model_checkpoint_path, 'final_state')
