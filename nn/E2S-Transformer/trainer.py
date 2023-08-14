@@ -144,8 +144,8 @@ class Trainer:
         PATH = os.path.join(self.model_checkpoint_path, 'final_state')
         if not os.path.exists(PATH):
             os.makedirs(PATH)
-        names = ['model', 'optimizer', 'scheduler', 'scaler']
-        entities = [self.model.module, self.optimizer, self.scheduler, self.scaler]
+        names = ['model', 'optimizer', 'scheduler']
+        entities = [self.model.module, self.optimizer, self.scheduler]
 
         for name, entity in zip(names, entities):
             torch.save(entity.state_dict(), os.path.join(PATH, f'{name}.pt'))
@@ -155,8 +155,8 @@ class Trainer:
         print(f'Saved final state at {PATH}')
 
     def _load_state(self, PATH):
-        names = ['model', 'optimizer', 'scheduler', 'scaler']
-        entities = [self.model, self.optimizer, self.scheduler, self.scaler]
+        names = ['model', 'optimizer', 'scheduler']
+        entities = [self.model, self.optimizer, self.scheduler]
 
         for name, entity in zip(names, entities):
             entity.load_state_dict(torch.load(os.path.join(PATH, f'{name}.pt')))
