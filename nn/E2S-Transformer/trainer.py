@@ -79,15 +79,15 @@ class Trainer:
                 pbar.set_description(f'Training | LR: {lr:.2e} | Train loss: {loss:.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
 
                 ##############
-                if i == 20:
-                    break
+                # if i == 20:
+                #     break
                 ##############
                 if self.master_process:
                     self.hist.append((loss, 'train'))
 
-                # if (i+1 == total_batches//2) or (i+1 == total_batches):
-                if (i+1) % 10 == 0:
-                    self.validate(pbar, loss)  # if tqdm OK?
+                if (i+1 == total_batches//2) or (i+1 == total_batches):
+                # if (i+1) % 10 == 0:
+                    self.validate(pbar, loss)
 
             if self.master_process:
                 print(f'\nEpoch {epoch+1} finished with the best validation loss {self.best_val_loss:.3f}.\n')
@@ -117,8 +117,8 @@ class Trainer:
                     dist.gather(loss)
 
                 ##############
-                if i == 20:
-                    break
+                # if i == 20:
+                #     break
                 ##############
         
         if self.master_process:
@@ -152,7 +152,7 @@ class Trainer:
         
         with open(os.path.join(PATH, 'hist.pickle'), 'wb') as handle:
             pickle.dump(self.hist, handle)
-        print(f'Saved final state at {PATH}')
+        print(f'Saved final state at {PATH}.')
 
     def _load_state(self, PATH):
         names = ['model', 'optimizer', 'scheduler']
@@ -161,4 +161,4 @@ class Trainer:
         for name, entity in zip(names, entities):
             entity.load_state_dict(torch.load(os.path.join(PATH, f'{name}.pt')))
         
-        print('Successfully loaded pretrained state dict.')
+        print('Successfully loaded pretrained state.')
