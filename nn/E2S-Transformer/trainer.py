@@ -22,6 +22,7 @@ class Trainer:
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler._LRScheduler,
         criterion: nn.Module,
+        initial_epoch: int,
         n_epochs: int,
         batch_size: int,
         step_every: int,
@@ -47,6 +48,7 @@ class Trainer:
         self.model = DDP(self.model.to(gpu_id), device_ids=[gpu_id])
 
         # training
+        self.initial_epoch = initial_epoch
         self.n_epochs = n_epochs
         self.batch_size = batch_size
         self.step_every = step_every
@@ -70,7 +72,8 @@ class Trainer:
 
             return loss.item() * self.step_every, current_lr
 
-        for epoch in range(self.n_epochs):
+        for epoch in range(self.initial_epoch, self.n_epochs+1):
+            self.train_dl.sampler.set_epoch(epoch)
             total_batches = len(self.train_dl)
 
             for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process),

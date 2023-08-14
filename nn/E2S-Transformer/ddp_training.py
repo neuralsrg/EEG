@@ -77,6 +77,7 @@ def main(rank: int, world_size: int):
         optimizer=optimizer,
         scheduler=scheduler,
         criterion=criterion,
+        initial_epoch=cfg.training.initial_epoch,
         n_epochs=cfg.training.n_epochs,
         batch_size=cfg.training.batch_size,
         step_every=cfg.training.step_every,
