@@ -9,8 +9,8 @@ import torch
 import torchaudio
 import torch.nn as nn
 
-from wavelets_pytorch.transform import WaveletTransformTorch
 from wavelets_pytorch.wavelets import Morlet
+from wavelets_pytorch.transform import WaveletTransformTorch
 
 from sklearn.decomposition import PCA
 

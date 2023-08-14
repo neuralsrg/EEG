@@ -1,25 +1,20 @@
 import os
 import warnings
+from tqdm import tqdm
 warnings.filterwarnings("ignore")
-from tqdm import tqdm, trange
 
-import hydra
+from omegaconf import OmegaConf
 from hydra.utils import instantiate
-from omegaconf import OmegaConf, DictConfig
 
 import torch
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-
-import torch.multiprocessing as mp
-from torch.utils.data.distributed import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.distributed as dist
+import torch.multiprocessing as mp
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
 from data import get_dl
-from model import E2STransformer, NoamAnnealing
 from trainer import Trainer
+from model import E2STransformer, NoamAnnealing
 
 
 def ddp_setup(rank, world_size):
@@ -36,7 +31,6 @@ def ddp_setup(rank, world_size):
 # @hydra.main(version_base=None, config_path=".", config_name="config")
 # def get_training_data(cfg: DictConfig):
 def get_training_data(cfg):
-    # cfg = OmegaConf.load("config.yaml")
     # data
     train_ds = instantiate(cfg.dataset)
     val_ds = instantiate(cfg.dataset).set_val_mode(True)
@@ -68,66 +62,13 @@ def get_training_data(cfg):
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.training.base_lr)
     scheduler=NoamAnnealing(optimizer=optimizer, d_model=cfg.model.d_model, warmup_steps=len(train_dl) // 5,
                             min_lr=cfg.training.min_lr)
-    scaler=torch.cuda.amp.GradScaler()
     criterion = torch.nn.MSELoss()
-
-    return train_dl, val_dl, model, optimizer, scheduler, scaler, criterion
-
-def train(rank, model, train_dl, criterion, optimizer, step_every):
-
-    def run_batch(eeg, audio, step):
-        pred_encoding, encoding = model(eeg, audio)
-        loss = criterion(pred_encoding, encoding) / step_every
-        loss.backward()
-
-        if step % step_every == 0:
-            optimizer.step()
-            optimizer.zero_grad()
-
-        return loss.item() * step_every
-
-    model = DDP(model.to(rank), device_ids=[rank])
-    master_process = rank == 0
-
-    for i, (eeg, audio) in enumerate(pbar := tqdm(train_dl, total=len(train_dl), disable=(not master_process))):
-        loss = run_batch(eeg.to(rank), audio.to(rank), step=i+1)
-        pbar.set_description(f'Train Loss: {loss}')
-
-        ##############
-        if i == 20:
-            break
-        ##############
-    
-def validate(rank, model, criterion, val_dl):
-    def run_batch(eeg, audio):
-        pred_encoding, encoding = model(eeg, audio)
-        loss = criterion(pred_encoding, encoding)
-        return loss
-
-    model = DDP(model.to(rank), device_ids=[rank]).eval()
-    master_process = rank == 0
-
-    with torch.no_grad():
-        for i, (eeg, audio) in enumerate(val_pbar := tqdm(val_dl, total=len(val_dl), disable=(not master_process))):
-            loss = run_batch(eeg.to(rank), audio.to(rank))
-            if master_process:
-                tensor_list = [loss.new_empty(()) for _ in range(2)]
-                dist.gather(loss, tensor_list)
-                val_pbar.set_description(f'Mean Val Loss: {torch.tensor(tensor_list).mean().item()}')
-            else:
-                dist.gather(loss)
-
-            ##############
-            if i == 20:
-                break
-            ##############
-
-    model.train()
+    return train_dl, val_dl, model, optimizer, scheduler, criterion
 
 def main(rank: int, world_size: int):
     ddp_setup(rank, world_size)
     cfg = OmegaConf.load("config.yaml")
-    train_dl, val_dl, model, optimizer, scheduler, scaler, criterion = get_training_data(cfg)
+    train_dl, val_dl, model, optimizer, scheduler, criterion = get_training_data(cfg)
     trainer = Trainer(
         gpu_id=rank,
         train_dl=train_dl,
@@ -135,7 +76,6 @@ def main(rank: int, world_size: int):
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
-        scaler=scaler,
         criterion=criterion,
         n_epochs=cfg.training.n_epochs,
         batch_size=cfg.training.batch_size,
@@ -144,9 +84,6 @@ def main(rank: int, world_size: int):
         load_from=cfg.training.load_from
     )
     trainer.train()
-    ###############
-    # trainer.validate()
-    ###############
     destroy_process_group()
 
 

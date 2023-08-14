@@ -2,7 +2,7 @@ import os
 import sys
 import pickle
 import numpy as np
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
@@ -21,7 +21,6 @@ class Trainer:
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler._LRScheduler,
-        scaler: torch.cuda.amp.GradScaler,
         criterion: nn.Module,
         n_epochs: int,
         batch_size: int,
@@ -40,7 +39,6 @@ class Trainer:
         self.model = model
         self.optimizer = optimizer
         self.scheduler = scheduler
-        self.scaler = scaler
 
         if os.path.exists(load_from):
             self._load_state(load_from)
@@ -72,7 +70,6 @@ class Trainer:
 
             return loss.item() * self.step_every, current_lr
 
-        # for epoch in trange(self.n_epochs, disable=(not self.master_process)):
         for epoch in range(self.n_epochs):
             total_batches = len(self.train_dl)
 
@@ -107,7 +104,6 @@ class Trainer:
         if self.master_process:
             losses = []  # losses across all validation data
         with torch.no_grad():
-            total_batches = len(self.val_dl)
             for i, (eeg, audio) in enumerate(self.val_dl):
                 loss = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id))
                 if self.master_process:
