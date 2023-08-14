@@ -71,6 +71,7 @@ class Trainer:
 
                 if (i+1) % self.step_every == 0:
                     loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0)
                     self.optimizer.step()
                     self.optimizer.zero_grad()
                     self.scheduler.step()
