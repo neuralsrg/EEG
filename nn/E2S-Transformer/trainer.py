@@ -72,7 +72,7 @@ class Trainer:
 
             return loss.item() * self.step_every, current_lr
 
-        for epoch in range(self.initial_epoch, self.n_epochs+1):
+        for epoch in range(self.initial_epoch, self.initial_epoch + self.n_epochs):
             self.train_dl.sampler.set_epoch(epoch)
             total_batches = len(self.train_dl)
 
