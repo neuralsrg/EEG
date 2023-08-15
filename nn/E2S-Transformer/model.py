@@ -212,7 +212,6 @@ class E2STransformer(nn.Module):
         wvt_transformer = WaveletTransformTorch(
             dt=self.eeg_sr,
             dj=self.dj,
-            wavelet=Morlet(),
             cuda=torch.cuda.is_available()
         )
         _ = wvt_transformer.cwt(x)
@@ -325,20 +324,45 @@ class E2STransformer(nn.Module):
         batch_size = eeg.size(0)
         src = self.prepare_src(eeg)  # (batch_size, in_seq_len, d_model)
         tgt = self.prepare_tgt(audio)  # (batch_size, out_seq_len, d_model)
-        
+
         # Add <sos> and <eos>
         src = torch.cat((self.src_sos.repeat(batch_size, 1, 1), src, self.src_eos.repeat(batch_size, 1, 1)),
                         dim=1)  # (batch_size, 1 + in_seq_len + 1, d_model)
         tgt = torch.cat((self.tgt_sos.repeat(batch_size, 1, 1), tgt, self.tgt_eos.repeat(batch_size, 1, 1)),
                         dim=1)  # (batch_size, 1 + out_seq_len + 1, d_model)
         
+        # tgt_input <sos>, token_1, token_2, ..., token_n
+        tgt_input = tgt[:, :-1, :]  # (batch_size, 1 + out_seq_len, d_model)
+
+        # tgt_output token_1, token_2, ..., token_n, <eos>
+        tgt_output = tgt[:, 1:, :]  # (batch_size, out_seq_len + 1, d_model)
+        
         # Transformer
-        causal_mask = self.transformer.generate_square_subsequent_mask(tgt.size(1)).to(eeg.device).type(torch.bool)
-        out = self.transformer(src=src, tgt=tgt, tgt_mask=causal_mask)  # (batch_size, 1 + out_seq_len + 1, d_model)
-        # out = out[:, 1:-1, :]  # (batch_size, out_seq_len, d_model)
+        causal_mask = self.transformer.generate_square_subsequent_mask(tgt_input.size(1)).to(eeg.device).type(torch.bool)
+        out = self.transformer(src=src, tgt=tgt_input, tgt_mask=causal_mask)  # (batch_size, out_seq_len + 1, d_model)
         
-        # Inverse PCA
-        # out = out @ self.components  # (batch_size, out_seq_len, n_freq_bins)
-        # out = out + self.mean
-        
-        return out, tgt
+        return out, tgt_output
+
+    def predict(self, eeg, out_seq_len):
+        """
+        :param torch.tensor eeg: input of shape ([batch_size], n_channels, in_seq_len)
+        :rtype torch.tensor
+        :return predicted_encoding of shape (batch_size, out_seq_len, d_model)
+        """
+        device = eeg.device()
+        if eeg.ndim == 2:
+            eeg.unsqueeze_(0)
+
+        self.eval().to(device)
+        with torch.no_grad():
+            out = self.prepare_src(eeg)  # (batch_size, in_seq_len, d_model)
+            out = self.transformer.encoder(out)  # (batch_size, in_seq_len, d_model)
+
+            pred = self.tgt_sos.repeat(eeg.size(0), 1, 1).to(device)  # (batch_size, 1, d_model)
+            for _ in range(out_seq_len):
+                new_window = self.transformer.decoder(pred, out, tgt_is_causal=True)[:, -1, :]  # (batch_size, d_model)
+                pred = torch.cat((pred, new_window.unsqueeze(1)), dim=1)
+
+        self.train()
+        return pred[:, 1:, :]
+            
