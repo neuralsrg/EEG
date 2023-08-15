@@ -163,6 +163,6 @@ class Trainer:
         entities = [self.model, self.optimizer, self.scheduler]
 
         for name, entity in zip(names, entities):
-            entity.load_state_dict(torch.load(os.path.join(PATH, f'{name}.pt')), map_location=self.gpu_id)
+            entity.load_state_dict(torch.load(os.path.join(PATH, f'{name}.pt'), map_location=self.gpu_id))
         
         print('Successfully loaded pretrained state.')
