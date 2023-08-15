@@ -165,4 +165,5 @@ class Trainer:
         for name, entity in zip(names, entities):
             entity.load_state_dict(torch.load(os.path.join(PATH, f'{name}.pt'), map_location=torch.device('cuda', self.gpu_id)))
         
-        print('Successfully loaded pretrained state.')
+        if self.master_process:
+            print('Successfully loaded pretrained state.')
