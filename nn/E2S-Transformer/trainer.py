@@ -37,7 +37,7 @@ class Trainer:
         self.val_dl = val_dl
 
         # model
-        self.model = model
+        self.model = model.to(gpu_id)
         self.optimizer = optimizer
         self.scheduler = scheduler
 
@@ -45,7 +45,7 @@ class Trainer:
             self._load_state(load_from)
         self.criterion = criterion
 
-        self.model = DDP(self.model.to(gpu_id), device_ids=[gpu_id])
+        self.model = DDP(self.model, device_ids=[gpu_id])
 
         # training
         self.initial_epoch = initial_epoch
