@@ -346,10 +346,11 @@ class E2STransformer(nn.Module):
     def predict(self, eeg, out_seq_len):
         """
         :param torch.tensor eeg: input of shape ([batch_size], n_channels, in_seq_len)
+        :param int out_seq_len: output sequence length
         :rtype torch.tensor
         :return predicted_encoding of shape (batch_size, out_seq_len, d_model)
         """
-        device = eeg.device()
+        device = eeg.device
         if eeg.ndim == 2:
             eeg.unsqueeze_(0)
 
@@ -360,9 +361,9 @@ class E2STransformer(nn.Module):
 
             pred = self.tgt_sos.repeat(eeg.size(0), 1, 1).to(device)  # (batch_size, 1, d_model)
             for _ in range(out_seq_len):
-                new_window = self.transformer.decoder(pred, out, tgt_is_causal=True)[:, -1, :]  # (batch_size, d_model)
+                causal_mask = self.transformer.generate_square_subsequent_mask(pred.size(1)).to(eeg.device).type(torch.bool)
+                new_window = self.transformer.decoder(pred, out, tgt_mask=causal_mask)[:, -1, :]  # (batch_size, d_model)
                 pred = torch.cat((pred, new_window.unsqueeze(1)), dim=1)
 
         self.train()
         return pred[:, 1:, :]
-            
