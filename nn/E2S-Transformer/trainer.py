@@ -58,36 +58,36 @@ class Trainer:
         self.hist = []
 
     def train(self):
+        def run_batch(eeg, audio, step):
+            pred_encoding, encoding = self.model(eeg, audio)
+            loss = self.criterion(pred_encoding, encoding) / self.step_every
+            loss.backward()
+
+            if step % self.step_every == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+                self.scheduler.step()
+            
+            current_lr = self.scheduler.get_last_lr()[-1]
+
+            return loss.item() * self.step_every, current_lr
 
         for epoch in range(self.initial_epoch, self.n_epochs+1):
             self.train_dl.sampler.set_epoch(epoch)
             total_batches = len(self.train_dl)
 
-            loss = 0
             for i, (eeg, audio) in enumerate(pbar := tqdm(self.train_dl, total=total_batches, disable=(not self.master_process),
                                                           position=0, leave=True, bar_format="{desc:<80}{percentage:3.0f}%{r_bar}")):
-                pred_encoding, encoding = self.model(eeg.to(self.gpu_id), audio.to(self.gpu_id))
-                loss += self.criterion(pred_encoding, encoding) / self.step_every
-
-                if (i+1) % self.step_every == 0:
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 10.0)
-                    self.optimizer.step()
-                    self.optimizer.zero_grad()
-                    self.scheduler.step()
-                
-                    lr = self.scheduler.get_last_lr()[-1]
-                    pbar.set_description(f'Training | LR: {lr:.2e} | Train loss: {loss.item():.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
-
-                    if self.master_process:
-                        self.hist.append((loss.item(), 'train'))
-
-                    loss = 0
+                loss, lr = run_batch(eeg.to(self.gpu_id), audio.to(self.gpu_id), step=i+1)
+                pbar.set_description(f'Training | LR: {lr:.2e} | Train loss: {loss:.2f} | Best val loss: {self.best_val_loss:.2f} | Current val loss: {self.cur_val_loss:.2f}')
 
                 ##############
                 # if i == 20:
                 #     break
                 ##############
+
+                if self.master_process:
+                    self.hist.append((loss.item(), 'train'))
 
                 if (i+1 == total_batches//2) or (i+1 == total_batches):
                 # if (i+1) % 10 == 0:
