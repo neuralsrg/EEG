@@ -129,7 +129,7 @@ training:
   initial_epoch: 0
   n_epochs: 6
   batch_size: 10
-  step_every: 4
+  step_every: 2
   model_checkpoint_path: /kaggle/working/checkpoints
   load_from: /kaggle/working/load_from
   base_lr: 0.2
