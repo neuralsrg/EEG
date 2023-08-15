@@ -87,7 +87,7 @@ class Trainer:
                 ##############
 
                 if self.master_process:
-                    self.hist.append((loss.item(), 'train'))
+                    self.hist.append((loss, 'train'))
 
                 if (i+1 == total_batches//2) or (i+1 == total_batches):
                 # if (i+1) % 10 == 0:
