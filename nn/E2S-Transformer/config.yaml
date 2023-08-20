@@ -73,6 +73,9 @@ dataset:
   in_seq_len: 1145
   seed: 1337
 
+augment:
+  sigma: 0.005
+
 model:
 
   # conv_downsampling
@@ -89,6 +92,7 @@ model:
   # positional encoding
   emb_dropout: 0.1
   in_seq_len: ${dataset.in_seq_len}
+  out_seq_len: 99
 
   # fft
   n_fft: 2048
@@ -131,6 +135,6 @@ training:
   batch_size: 10
   step_every: 4
   model_checkpoint_path: /kaggle/working/checkpoints
-  load_from: /kaggle/input/e2s-transformer-epoch13/load_from
+  load_from: /kaggle/input/e2s-transformer-epoch5/load_from
   base_lr: 0.2
   min_lr: 0.00001

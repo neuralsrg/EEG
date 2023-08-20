@@ -2,7 +2,7 @@ import os
 import random
 import numpy as np
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, Iterable
 
 import torch
 import torchaudio
@@ -51,6 +51,8 @@ class EEGDataset(Dataset):
         self.sound_size = sound_size
         self.in_seq_len = in_seq_len
         self.seed = seed
+
+        self.transforms = None
 
         rnd = random.Random(seed)
         
@@ -135,11 +137,25 @@ class EEGDataset(Dataset):
         audio = audio[:S] if audio.size(0) >= S else nn.functional.pad(audio, (0, S-audio.size(0)), value=0)
         
         x = x.t()  # (n_channels, in_seq_len)
+        x, audio = x.float(), audio.float()
         
-        return x.float(), audio.float()
+        if self.transforms is not None:
+            for t in self.transforms:
+                x, audio = t(x, audio)
+        
+        return x, audio
 
 def get_dl(train_ds: Dataset, val_ds: Dataset, batch_size: int = 32):
     dls = [DataLoader(ds, batch_size=batch_size, pin_memory=True,
                       shuffle=False, sampler=DistributedSampler(ds))
            for ds in (train_ds, val_ds)]
     return dls
+
+
+class AudioAugment(object):
+    def __init__(self, sigma: int):
+        self.sigma = sigma
+
+    def __call__(self, item: Iterable):
+        eeg, audio = item
+        return eeg, torch.FloatTensor(*audio.size()).to(audio.device).normal_(0, self.sigma)

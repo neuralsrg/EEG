@@ -1,18 +1,15 @@
 import os
 import warnings
-from tqdm import tqdm
 warnings.filterwarnings("ignore")
 
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 
 import torch
-import torch.distributed as dist
 import torch.multiprocessing as mp
-from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
-from data import get_dl
+from data import get_dl, AudioAugment
 from trainer import Trainer
 from model import E2STransformer, NoamAnnealing
 
@@ -33,6 +30,7 @@ def ddp_setup(rank, world_size):
 def get_training_data(cfg):
     # data
     train_ds = instantiate(cfg.dataset)
+    train_ds.transforms = [AudioAugment(sigma=cfg.augment.sigma)]
     val_ds = instantiate(cfg.dataset).set_val_mode(True)
     train_dl, val_dl = get_dl(train_ds=train_ds, val_ds= val_ds, batch_size=cfg.training.batch_size)
 
