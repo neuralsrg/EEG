@@ -141,7 +141,7 @@ class EEGDataset(Dataset):
         
         if self.transforms is not None:
             for t in self.transforms:
-                x, audio = t(x, audio)
+                x, audio = t((x, audio))
         
         return x, audio
 
