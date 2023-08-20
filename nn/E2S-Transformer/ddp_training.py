@@ -45,6 +45,7 @@ def get_training_data(cfg):
         conv_module_dropout=cfg.model.conv_module_dropout,
         emb_dropout=cfg.model.emb_dropout,
         in_seq_len=cfg.model.in_seq_len,
+        out_seq_len=cfg.model.out_seq_len,
         n_fft=cfg.model.n_fft,
         hop_size=cfg.model.hop_size,
         nhead=cfg.model.nhead,

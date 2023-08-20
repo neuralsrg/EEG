@@ -129,28 +129,31 @@ class ConvolutionModule(torch.nn.Module):
             
 class PositionalEncoding(nn.Module):
 
-    def __init__(self, d_model: int, emb_dropout: float, in_seq_len: int):
+    def __init__(self, d_model: int, emb_dropout: float, seq_len: int):
         super().__init__()
         
         den = torch.exp(- torch.arange(0, d_model, 2)* math.log(10000) / d_model)
-        pos = torch.arange(0, in_seq_len).reshape(in_seq_len, 1)
-        pos_embedding = torch.zeros((in_seq_len, d_model))
+        pos = torch.arange(0, seq_len).reshape(seq_len, 1)
+        pos_embedding = torch.zeros((seq_len, d_model))
         pos_embedding[:, 0::2] = torch.sin(pos * den)
         pos_embedding[:, 1::2] = torch.cos(pos * den)
-        pos_embedding = pos_embedding.unsqueeze(0)  # (1, in_seq_len, d_model)
+        pos_embedding = pos_embedding.unsqueeze(0)  # (1, max_seq_len, d_model)
 
         self.dropout = nn.Dropout(emb_dropout)
         self.register_buffer('pos_embedding', pos_embedding)
 
     def forward(self, x: torch.Tensor):
-        return self.dropout(x + self.pos_embedding)
+        '''
+        :param torch.Tensor x: tensor of shape (batch_size, seq_len, d_model)
+        '''
+        return self.dropout(x + self.pos_embedding[:, :x.size(1), :])
 
 
 class E2STransformer(nn.Module):
     
     def __init__(self, n_channels: int, n_wvt_bins: int, d_model: int,
                  kernel_size: int, conv_module_dropout: int, emb_dropout: float,
-                 in_seq_len: int, n_fft: int, hop_size: int, nhead: int,
+                 in_seq_len: int, out_seq_len: int, n_fft: int, hop_size: int, nhead: int,
                  num_encoder_layers: int, num_decoder_layers: int,
                  dim_feedforward: int, dropout: float,
                  activation: str, audio_sr: int, audio_paths: List[str],
@@ -168,7 +171,7 @@ class E2STransformer(nn.Module):
         self.conv_module = ConvolutionModule(d_model=d_model, kernel_size=kernel_size,
                                              conv_module_dropout=conv_module_dropout)
         self.positional_encoding = PositionalEncoding(d_model=d_model, emb_dropout=emb_dropout,
-                                                      in_seq_len=in_seq_len)
+                                                      seq_len=max(in_seq_len, out_seq_len))
         self.n_fft = n_fft
         self.hop_size = hop_size
         self.d_model = d_model
@@ -333,6 +336,7 @@ class E2STransformer(nn.Module):
         
         # tgt_input <sos>, token_1, token_2, ..., token_n
         tgt_input = tgt[:, :-1, :]  # (batch_size, 1 + out_seq_len, d_model)
+        tgt_input = self.positional_encoding(tgt_input)
 
         # tgt_output token_1, token_2, ..., token_n, <eos>
         tgt_output = tgt[:, 1:, :]  # (batch_size, out_seq_len + 1, d_model)
@@ -362,7 +366,9 @@ class E2STransformer(nn.Module):
             pred = self.tgt_sos.repeat(eeg.size(0), 1, 1).to(device)  # (batch_size, 1, d_model)
             for _ in range(out_seq_len):
                 causal_mask = self.transformer.generate_square_subsequent_mask(pred.size(1)).to(eeg.device).type(torch.bool)
-                new_window = self.transformer.decoder(pred, out, tgt_mask=causal_mask)[:, -1, :]  # (batch_size, d_model)
+
+                # (batch_size, d_model)
+                new_window = self.transformer.decoder(self.positional_encoding(pred), out, tgt_mask=causal_mask)[:, -1, :]
                 pred = torch.cat((pred, new_window.unsqueeze(1)), dim=1)
 
         self.train()
