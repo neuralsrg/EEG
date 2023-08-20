@@ -158,4 +158,4 @@ class AudioAugment(object):
 
     def __call__(self, item: Iterable):
         eeg, audio = item
-        return eeg, torch.FloatTensor(*audio.size()).to(audio.device).normal_(0, self.sigma)
+        return eeg, audio + torch.FloatTensor(*audio.size()).to(audio.device).normal_(0, self.sigma)

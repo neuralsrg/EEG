@@ -130,8 +130,8 @@ model:
   dj: 0.8
 
 training:
-  initial_epoch: 13
-  n_epochs: 6
+  initial_epoch: 0
+  n_epochs: 3
   batch_size: 10
   step_every: 4
   model_checkpoint_path: /kaggle/working/checkpoints
