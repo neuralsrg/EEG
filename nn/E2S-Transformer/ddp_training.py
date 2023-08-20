@@ -30,7 +30,7 @@ def ddp_setup(rank, world_size):
 def get_training_data(cfg):
     # data
     train_ds = instantiate(cfg.dataset)
-    # train_ds.transforms = [AudioAugment(sigma=cfg.augment.sigma)]
+    train_ds.transforms = [AudioAugment(sigma=cfg.augment.sigma)]
     val_ds = instantiate(cfg.dataset).set_val_mode(True)
     train_dl, val_dl = get_dl(train_ds=train_ds, val_ds= val_ds, batch_size=cfg.training.batch_size)
 
