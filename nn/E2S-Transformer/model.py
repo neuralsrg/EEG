@@ -336,7 +336,7 @@ class E2STransformer(nn.Module):
         
         # tgt_input <sos>, token_1, token_2, ..., token_n
         tgt_input = tgt[:, :-1, :]  # (batch_size, 1 + out_seq_len, d_model)
-        tgt_input = self.positional_encoding(tgt_input)
+        # tgt_input = self.positional_encoding(tgt_input)
 
         # tgt_output token_1, token_2, ..., token_n, <eos>
         tgt_output = tgt[:, 1:, :]  # (batch_size, out_seq_len + 1, d_model)
