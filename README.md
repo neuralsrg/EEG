@@ -2,7 +2,9 @@
 
 ## E2S Transformer
 * Architecture
+
 ![Alt text](https://svgur.com/i/wiH.svg)
+
 * [Kaggle notebook](https://www.kaggle.com/code/neuralsrg/e2s-transformer)
 * [Kaggle dataset](https://www.kaggle.com/datasets/mrgeodezik/internal-speech-recognition) (Private)
 
