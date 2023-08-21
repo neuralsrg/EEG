@@ -135,6 +135,6 @@ training:
   batch_size: 10
   step_every: 4
   model_checkpoint_path: /kaggle/working/checkpoints
-  load_from: /kaggle/input/e2s-transformer-epoch5/load_from
+  load_from: /kaggle/input/e2s-epoch3/load_from
   base_lr: 0.2
   min_lr: 0.00001
