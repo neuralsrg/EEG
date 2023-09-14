@@ -13,3 +13,10 @@ send.sh
 outputs
 test.py
 .obsidian
+
+# venv files
+bin
+lib
+lib64
+share
+pyvenv.cfg
