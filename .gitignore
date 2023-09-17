@@ -6,9 +6,9 @@ __pycache__
 matrices
 **/.matrices
 runs
-.csv
-.h5
-.wav
+*.csv
+*.h5
+*.wav
 data
 send.sh
 outputs
