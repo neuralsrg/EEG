@@ -8,6 +8,7 @@ matrices
 runs
 .csv
 .h5
+.wav
 data
 send.sh
 outputs
