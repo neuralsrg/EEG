@@ -3,7 +3,7 @@
 ## E2S Transformer
 * Architecture
 
-![Alt text](https://raw.githubusercontent.com/neuralsrg/EEG/main/images/e2s.svg)
+![Architecture](https://github.com/neuralsrg/EEG/blob/main/images/E2S-Transformer/e2s.svg)
 
 * [Kaggle notebook](https://www.kaggle.com/code/neuralsrg/e2s-transformer)
 * [Kaggle dataset](https://www.kaggle.com/datasets/mrgeodezik/internal-speech-recognition) (Private)
