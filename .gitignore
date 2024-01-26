@@ -9,6 +9,11 @@ runs
 *.csv
 *.h5
 *.wav
+*.pkl
+*.zip
+*.pdf
+*.docx
+*.png
 data
 send.sh
 outputs
