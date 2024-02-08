@@ -17,6 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('-fs', '--frame_size', type=int, help='Frame size (n_fft) for STFT', default=2048)
     parser.add_argument('-hop', '--hop_size', type=int, help='Hop size for STFT', default=512)
     parser.add_argument('-o', '--output_dir', type=str, help='Directory where restored sounds will be saved', default='restored_sounds')
+    parser.add_argument('-high', '--highpass', type=float, help='High pass frequency', default=None)
     args = parser.parse_args()
 
     if not os.path.exists(args.output_dir):
@@ -39,6 +40,10 @@ if __name__ == '__main__':
                 exit(0)
         else:
             raise AttributeError('Unknown method!')
+        
+        if args.highpass is not None:
+            freqs = np.arange(0, 1 + args.frame_size / 2) * args.sampling_rate / args.frame_size
+            spectrum = spectrum * (args.highpass < freqs).astype(int)[:, None]
 
         sound = librosa.griffinlim(spectrum, hop_length=args.hop_size, n_fft=args.frame_size)
 
